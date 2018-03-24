@@ -28,9 +28,14 @@ android {
 
 repositories {
     mavenCentral()
+    maven {
+        url "http://files.couchbase.com/maven2/"
+    }
 }
 
 dependencies {
+    compile 'com.couchbase.lite:couchbase-lite-android:1.4.1'
+    compile 'com.couchbase.lite:couchbase-lite-java-listener:1.4.1'
+    compile 'com.couchbase.lite:couchbase-lite-java-javascript:1.4.1'
     compile 'com.facebook.react:react-native:+'
 }
-  
