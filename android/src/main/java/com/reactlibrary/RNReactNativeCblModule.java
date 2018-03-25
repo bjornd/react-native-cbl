@@ -54,7 +54,7 @@ public class RNReactNativeCblModule extends ReactContextBaseJavaModule implement
 
   @Override
   public String getName() {
-    return "CouchbaseLite";
+    return "RNReactNativeCbl";
   }
 
   public RNReactNativeCblModule(ReactApplicationContext reactContext) {
