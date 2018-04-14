@@ -1,6 +1,8 @@
 
-import { NativeModules } from 'react-native';
+import { NativeModules } from 'react-native'
 
-const { RNReactNativeCbl } = NativeModules;
+const { RNReactNativeCbl } = NativeModules
 
-export default RNReactNativeCbl;
+export default RNReactNativeCbl
+export * from './cbl-provider-decorator'
+export * from './cbl-image'
