@@ -1,5 +1,5 @@
 import React from 'react'
-import { Image, NativeModules, findNodeHandle, requireNativeComponent } from 'react-native'
+import { Image, NativeModules, findNodeHandle, requireNativeComponent, Image } from 'react-native'
 import { cblConnectAttachmentToImage } from 'react-native-cbl'
 
 const { RNReactNativeCbl } = NativeModules
@@ -16,8 +16,9 @@ export class CBLImage extends React.Component {
 
   render() {
     const { documentId, attachmentName, ...restProps } = this.props
+    const ImageImplementation = RNReactNativeCblImage || Image
     return (
-      <RNReactNativeCblImage ref={ ref => this.image = ref } {...restProps} />
+      <ImageImplementation ref={ ref => this.image = ref } {...restProps} />
     )
   }
 }

@@ -1,8 +1,12 @@
 
 package com.reactlibrary;
 
+import android.graphics.drawable.Drawable;
+import android.net.Uri;
 import android.text.TextUtils;
+import android.widget.ImageView;
 
+import com.couchbase.lite.Attachment;
 import com.couchbase.lite.Database;
 import com.couchbase.lite.Document;
 import com.couchbase.lite.DocumentChange;
@@ -12,6 +16,8 @@ import com.couchbase.lite.Query;
 import com.couchbase.lite.QueryEnumerator;
 import com.couchbase.lite.QueryRow;
 import com.couchbase.lite.Reducer;
+import com.couchbase.lite.Revision;
+import com.couchbase.lite.UnsavedRevision;
 import com.couchbase.lite.View;
 import com.couchbase.lite.android.AndroidContext;
 import com.couchbase.lite.auth.Authenticator;
@@ -32,7 +38,13 @@ import com.couchbase.lite.javascript.JavaScriptViewCompiler;
 import com.facebook.react.bridge.ReadableType;
 import com.facebook.react.bridge.WritableMap;
 import com.facebook.react.modules.core.DeviceEventManagerModule;
+import com.facebook.react.uimanager.NativeViewHierarchyManager;
+import com.facebook.react.uimanager.UIBlock;
+import com.facebook.react.uimanager.UIManagerModule;
+import com.facebook.react.views.image.ReactImageView;
 
+import java.io.FileNotFoundException;
+import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
@@ -321,6 +333,59 @@ public class RNReactNativeCblModule extends ReactContextBaseJavaModule implement
     } catch (MalformedURLException e) {
       promise.reject("start_replication", "Malformed remote URL", e);
     }
+  }
 
+  @ReactMethod
+  public void addAttachment(String contentUri, String attachmentName, String documentId, Promise promise) {
+    try {
+      Uri uri = Uri.parse(contentUri);
+      InputStream stream = this.mReactContext.getContentResolver().openInputStream(uri);
+      String contentType = this.mReactContext.getContentResolver().getType(uri);
+      Document doc = this.db.getDocument(documentId);
+      UnsavedRevision newRev = doc.getCurrentRevision().createRevision();
+      newRev.setAttachment(attachmentName, contentType, stream);
+      newRev.save();
+      promise.resolve(null);
+    } catch (CouchbaseLiteException e) {
+      promise.reject("add_attachment", "Can not add attachment", e);
+    } catch (FileNotFoundException e) {
+      promise.reject("add_attachment", "File not found", e);
+    }
+  }
+
+  @ReactMethod
+  public void removeAttachment(String attachmentName, String documentId, Promise promise) {
+    try {
+      Document doc = this.db.getDocument(documentId);
+      UnsavedRevision newRev = doc.getCurrentRevision().createRevision();
+      newRev.removeAttachment(attachmentName);
+      newRev.save();
+      promise.resolve(null);
+    } catch (CouchbaseLiteException e) {
+      promise.reject("remove_attachment", "Can not remove attachment", e);
+    }
+  }
+
+  @ReactMethod
+  public void connectAttachmentToImage(final int reactTag, String documentId, String attachmentName) {
+    try {
+      Document doc = this.db.getDocument(documentId);
+      Revision rev = doc.getCurrentRevision();
+      Attachment att = rev.getAttachment(attachmentName);
+      if (att != null) {
+        InputStream is = att.getContent();
+        final Drawable d = Drawable.createFromStream(is, attachmentName);
+        UIManagerModule uiManager = this.mReactContext.getNativeModule(UIManagerModule.class);
+        uiManager.addUIBlock(new UIBlock() {
+          @Override
+          public void execute(NativeViewHierarchyManager nativeViewHierarchyManager) {
+            ImageView view = (ImageView)nativeViewHierarchyManager.resolveView(reactTag);
+            view.setImageDrawable(d);
+          }
+        });
+      }
+    } catch (CouchbaseLiteException e) {
+
+    }
   }
 }
