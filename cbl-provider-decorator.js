@@ -83,6 +83,8 @@ export function cblProvider(getParams) {
       }
     }
 
+    hoistNonReactStatics(CblProvider, WrappedComponent)
+
     return CblProvider
   }
 }
