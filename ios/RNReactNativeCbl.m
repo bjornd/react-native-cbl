@@ -126,12 +126,12 @@ RCT_EXPORT_METHOD(createLiveDocument:(nonnull NSString*)docId
                                                       object: doc
                                                        queue: nil
                                                   usingBlock: ^(NSNotification *n) {
-                                                      [self sendEventWithName:@"liveDocumentChange" body:@{ @"data": doc.properties, @"uuid": uuid }];
+                                                      [self sendEventWithName:@"liveDocumentChange" body:@{ @"data": [self serializeDocument:doc], @"uuid": uuid }];
                                                   }
      ];
     [_liveDocuments setValue:doc forKey:uuid];
     resolve(uuid);
-    [self sendEventWithName:@"liveDocumentChange" body:@{ @"data": doc.properties, @"uuid": uuid }];
+    [self sendEventWithName:@"liveDocumentChange" body:@{ @"data": [self serializeDocument:doc], @"uuid": uuid }];
 }
 
 RCT_EXPORT_METHOD(destroyLiveDocument:(nonnull NSString*)uuid
@@ -222,17 +222,33 @@ RCT_EXPORT_METHOD(destroyLiveQuery:(nonnull NSString*)uuid
 - (NSArray *)getQueryResults:(CBLQueryEnumerator *)queryEnumerator
 {
     NSArray *rows = [queryEnumerator allObjects];
-    NSMutableArray *mapped = [NSMutableArray arrayWithCapacity:[rows count]];
+    NSMutableArray *mappedRows = [NSMutableArray arrayWithCapacity:[rows count]];
     [rows enumerateObjectsUsingBlock:^(CBLQueryRow *obj, NSUInteger idx, BOOL *stop) {
         if (obj.document) {
-            if (obj.document.properties) {
-                [mapped addObject:obj.document.properties];
+            NSDictionary *serializedDoc = [self serializeDocument:obj.document];
+            if (serializedDoc) {
+                [mappedRows addObject:serializedDoc];
             }
         } else {
-            [mapped addObject:@{ @"key": obj.key, @"value": obj.value == nil ? [NSNull null] : obj.value }];
+            [mappedRows addObject:@{ @"key": obj.key, @"value": obj.value == nil ? [NSNull null] : obj.value }];
         }
     }];
-    return mapped;
+    return mappedRows;
+}
+
+- (NSDictionary *)serializeDocument:(CBLDocument *)document
+{
+    NSMutableDictionary *properties = [[NSMutableDictionary alloc] initWithDictionary:document.properties];
+    NSDictionary *attachments = [properties objectForKey:@"_attachments"];
+    NSMutableDictionary *mappedAttachments = [[NSMutableDictionary alloc] initWithCapacity:attachments.count];
+    for(id key in attachments) {
+        NSMutableDictionary *attData = [[NSMutableDictionary alloc] initWithDictionary:[attachments objectForKey:key]];
+        NSString *attUrl = [document.currentRevision attachmentNamed:key].contentURL.absoluteString;
+        [attData setObject:attUrl forKey:@"url"];
+        [mappedAttachments setObject:attData forKey:key];
+    }
+    [properties setObject:mappedAttachments forKey:@"_attachments"];
+    return properties;
 }
 
 RCT_EXPORT_METHOD(startReplication:(NSString*)remoteUrl
@@ -301,21 +317,6 @@ RCT_EXPORT_METHOD(removeAttachment:(NSString *)attachmentName
         resolve(@"ok");
     } else {
         reject(@"remove_attachment", @"Can not remove attachment", error);
-    }
-}
-
-RCT_EXPORT_METHOD(connectAttachmentToImage:(nonnull NSNumber *)reactTag
-                  docId:(NSString *)docId
-                  attachmentName:(NSString *)attachmentName)
-{
-    CBLDocument* doc = [_db documentWithID:docId];
-    CBLRevision* rev = doc.currentRevision;
-    CBLAttachment* att = [rev attachmentNamed:attachmentName];
-    if (att != nil) {
-        NSData *imageData = att.content;
-        UIImage *image = [[UIImage alloc] initWithData:imageData];
-        RCTImageView *imageView = (RCTImageView *)[self.bridge.uiManager viewForReactTag:reactTag];
-        [imageView performSelector:@selector(setImage:) withObject:image];
     }
 }
 
