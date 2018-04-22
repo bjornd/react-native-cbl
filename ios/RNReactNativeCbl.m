@@ -3,7 +3,6 @@
 #import "CBLRegisterJSViewCompiler.h"
 #import <AssetsLibrary/AssetsLibrary.h>
 #import <MobileCoreServices/MobileCoreServices.h>
-#import "RCTBridge+Private.h"
 #import "RCTUIManager.h"
 #import "RCTImageView.h"
 

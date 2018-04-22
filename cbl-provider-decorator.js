@@ -2,6 +2,7 @@ import React from 'react'
 import { NativeEventEmitter } from 'react-native'
 import { entriesToObject } from './utils'
 import { NativeModules } from 'react-native'
+import hoistNonReactStatics from 'hoist-non-react-statics'
 
 const { RNReactNativeCbl } = NativeModules
 
