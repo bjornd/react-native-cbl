@@ -41,7 +41,6 @@ import com.facebook.react.modules.core.DeviceEventManagerModule;
 import com.facebook.react.uimanager.NativeViewHierarchyManager;
 import com.facebook.react.uimanager.UIBlock;
 import com.facebook.react.uimanager.UIManagerModule;
-import com.facebook.react.views.image.ReactImageView;
 
 import java.io.FileNotFoundException;
 import java.io.InputStream;
@@ -159,7 +158,7 @@ public class RNReactNativeCblModule extends ReactContextBaseJavaModule implement
 
   @ReactMethod
   public void createLiveDocument(String docId, Promise promise) {
-    Document doc = this.db.getDocument(docId);
+    final Document doc = this.db.getDocument(docId);
     final String uuid = UUID.randomUUID().toString();
     final RNReactNativeCblModule self = this;
     doc.addChangeListener(new Document.ChangeListener() {
@@ -168,7 +167,7 @@ public class RNReactNativeCblModule extends ReactContextBaseJavaModule implement
         DocumentChange docChange = event.getChange();
         WritableMap params = Arguments.createMap();
         params.putString("uuid", uuid);
-        Map<String, Object> props = new HashMap<>(docChange.getAddedRevision().getProperties());
+        Map<String, Object> props = self.serializeDocument(doc);
         params.putMap("data", ConversionUtil.toWritableMap(props));
         self.sendEvent("liveDocumentChange", params);
       }
@@ -177,8 +176,7 @@ public class RNReactNativeCblModule extends ReactContextBaseJavaModule implement
     promise.resolve(uuid);
     WritableMap params = Arguments.createMap();
     params.putString("uuid", uuid);
-    Map<String, Object> props = new HashMap<>(doc.getProperties());
-    params.putMap("data", ConversionUtil.toWritableMap(props));
+    params.putMap("data", ConversionUtil.toWritableMap(this.serializeDocument(doc)));
     this.sendEvent("liveDocumentChange", params);
   }
 
@@ -304,7 +302,7 @@ public class RNReactNativeCblModule extends ReactContextBaseJavaModule implement
       QueryRow row = it.next();
       Document doc = row.getDocument();
       if (doc != null) {
-        HashMap<String, Object> props = new HashMap(doc.getProperties());
+        HashMap<String, Object> props = this.serializeDocument(doc);
         if (props != null) {
           list.add( props );
         }
@@ -316,6 +314,21 @@ public class RNReactNativeCblModule extends ReactContextBaseJavaModule implement
       }
     }
     return list;
+  }
+
+  private HashMap<String, Object> serializeDocument(Document document) {
+    HashMap<String, Object> properties = new HashMap<>(document.getProperties());
+    Map<String, Object> attachments = (Map<String, Object>)properties.get("_attachments");
+    HashMap<String, Object> mappedAttachments = new HashMap<>();
+    for (Map.Entry<String, Object> entry : attachments.entrySet())
+    {
+      Map<String, Object> attData = new HashMap<>((Map<String, Object>)entry.getValue());
+      String attName = entry.getKey();
+      attData.put("url", document.getCurrentRevision().getAttachment(attName).getContentURL().toString());
+      mappedAttachments.put(attName, attData);
+    }
+    properties.put("_attachments", mappedAttachments);
+    return properties;
   }
 
   @ReactMethod
