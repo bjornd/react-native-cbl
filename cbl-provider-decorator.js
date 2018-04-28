@@ -5,32 +5,17 @@ import { NativeModules } from 'react-native'
 import hoistNonReactStatics from 'hoist-non-react-statics'
 
 const { RNReactNativeCbl } = NativeModules
+const cblEventEmitter = new NativeEventEmitter(RNReactNativeCbl)
 
 export function cblProvider(getParams) {
   return WrappedComponent => {
-    const liveQueries = {}
-    const liveDocuments = {}
-    const postProcess = {}
-    const createQueries = props => {
-      RNReactNativeCbl.openDb('odygos', true).then( () =>
-        Object.entries( getParams(props) ).forEach( ([key, values]) => {
-          if (values.view) {
-            RNReactNativeCbl.createLiveQuery(values.view, values.params).then( uuid => {
-              liveQueries[uuid] = key
-              postProcess[uuid] = values.postProcess
-            })
-          } else if (values.docId) {
-            RNReactNativeCbl.createLiveDocument(values.docId).then( uuid => {
-              liveDocuments[uuid] = key
-            })
-          }
-        })
-      )
-    }
-
     class CblProvider extends React.Component {
       constructor(props) {
         super(props)
+
+        this.liveQueries = {}
+        this.liveDocuments = {}
+        this.postProcess = {}
 
         this.state = {
           results: entriesToObject(
@@ -38,42 +23,78 @@ export function cblProvider(getParams) {
           )
         }
 
-        const cblEventEmitter = new NativeEventEmitter(RNReactNativeCbl)
         this.liveQueryListener = cblEventEmitter.addListener(
-          'liveQueryChange',
-          ({data, uuid}) => {
-            if (!liveQueries[uuid]) {
-              return
-            }
-            if (postProcess[uuid]) {
-              data = postProcess[uuid](data)
-            }
-            this.setState( ({ results }) => {
-              return ({ results: { ...results, [liveQueries[uuid]]: data } })
-            })
-          }
+          'liveQueryChange', this.onLiveQueryChange.bind(this)
         )
         this.liveDocumentListener = cblEventEmitter.addListener(
-          'liveDocumentChange',
-          ({data, uuid}) => {
-            if (!liveDocuments[uuid]) {
-              return
-            }
-            this.setState( ({ results }) =>
-              ({ results: { ...results, [liveDocuments[uuid]]: data } })
-            )
-          }
+          'liveDocumentChange', this.onLiveDocumentChange.bind(this)
         )
 
-        createQueries(props)
+        this.createQueries(props)
+      }
+
+      createQueries(props) {
+        RNReactNativeCbl.openDb('odygos', true).then( () =>
+          Object.entries( getParams(props) ).forEach( ([key, values]) => {
+            if (values.view) {
+              if (values.live === false) {
+                RNReactNativeCbl.query(values.view, values.params).then( data => {
+                  this.setState( ({ results }) => {
+                    return ({ results: { ...results, [key]: data } })
+                  })
+                })
+              } else {
+                RNReactNativeCbl.createLiveQuery(values.view, values.params).then( uuid => {
+                  this.liveQueries[uuid] = key
+                  this.postProcess[uuid] = values.postProcess
+                })
+              }
+            } else if (values.docId) {
+              if (values.live === false) {
+                RNReactNativeCbl.getDocument(values.docId).then( data => {
+                  this.setState( ({ results }) =>
+                    ({ results: { ...results, [key]: data } })
+                  )
+                })
+              } else {
+                RNReactNativeCbl.createLiveDocument(values.docId).then( uuid => {
+                  this.liveDocuments[uuid] = key
+                })
+              }
+            }
+          })
+        )
+      }
+
+      onLiveQueryChange({data, uuid}) {
+        if (!this.liveQueries[uuid]) {
+          return
+        }
+        if (this.postProcess[uuid]) {
+          data = this.postProcess[uuid](data)
+        }
+        this.setState( ({ results }) => {
+          return ({ results: { ...results, [this.liveQueries[uuid]]: data } })
+        })
+      }
+
+      onLiveDocumentChange({data, uuid}) {
+        if (!this.liveDocuments[uuid]) {
+          return
+        }
+        this.setState( ({ results }) =>
+          ({ results: { ...results, [this.liveDocuments[uuid]]: data } })
+        )
       }
 
       componentWillUnmount() {
-        Object.entries( liveQueries ).forEach( ([key, value]) => {
+        Object.entries( this.liveQueries ).forEach( ([key, value]) => {
           RNReactNativeCbl.destroyLiveQuery( key )
+          delete this.liveQueries[key]
         })
-        Object.entries( liveDocuments ).forEach( ([key, value]) => {
+        Object.entries( this.liveDocuments ).forEach( ([key, value]) => {
           RNReactNativeCbl.destroyLiveDocument( key )
+          delete this.liveDocuments[key]
         })
         this.liveQueryListener.remove()
         this.liveDocumentListener.remove()

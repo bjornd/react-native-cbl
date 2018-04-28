@@ -60,7 +60,7 @@ RCT_EXPORT_METHOD(getDocument:(nonnull NSString*)docId
 {
     CBLDocument* doc = [_db documentWithID:docId];
     if (doc) {
-        resolve( doc.properties );
+        resolve( [self serializeDocument:doc] );
     } else {
         reject( @"document_not_found", @"Document not found", nil );
     }
@@ -85,10 +85,10 @@ RCT_EXPORT_METHOD(updateDocument:(NSString*)docId
                   rejecter:(RCTPromiseRejectBlock)reject)
 {
     CBLDocument* doc = [_db documentWithID:docId];
-    if (!doc) {
-        reject(@"document_update", @"Can not find document", nil);
-        return;
-    }
+    //if (!doc) {
+    //    reject(@"document_update", @"Can not find document", nil);
+    //    return;
+    //}
     NSError* error;
     if (![doc update: ^BOOL(CBLUnsavedRevision *newRev) {
         for (id key in properties) {
@@ -259,9 +259,9 @@ RCT_EXPORT_METHOD(startReplication:(NSString*)remoteUrl
     CBLReplication *push = [_db createPushReplication: url];
     CBLReplication *pull = [_db createPullReplication: url];
     push.continuous = pull.continuous = YES;
-    id<CBLAuthenticator> auth;
-    auth = [CBLAuthenticator facebookAuthenticatorWithToken:facebookToken];
-    push.authenticator = pull.authenticator = auth;
+    //id<CBLAuthenticator> auth;
+    //auth = [CBLAuthenticator facebookAuthenticatorWithToken:facebookToken];
+    //push.authenticator = pull.authenticator = auth;
     [push start];
     [pull start];
     _push = push;

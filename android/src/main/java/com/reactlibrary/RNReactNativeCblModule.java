@@ -128,15 +128,15 @@ public class RNReactNativeCblModule extends ReactContextBaseJavaModule implement
   @ReactMethod
   public void updateDocument(String docId, ReadableMap properties, Promise promise) {
     Document doc = this.db.getDocument(docId);
-    if (doc == null) {
-      promise.reject("update_document", "Can not find document");
-      return;
-    }
+    //if (doc == null) {
+    //  promise.reject("update_document", "Can not find document");
+    //  return;
+    //}
     Map<String, Object> props = new HashMap<>();
     if (doc.getCurrentRevision() != null) {
       props.putAll(doc.getProperties());
     }
-    props.putAll(properties.toHashMap());
+    props.putAll( ConversionUtil.toMap(properties) );
     try {
       doc.putProperties(props);
       promise.resolve(null);
