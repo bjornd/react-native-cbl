@@ -224,9 +224,11 @@ RCT_EXPORT_METHOD(destroyLiveQuery:(nonnull NSString*)uuid
     NSMutableArray *mappedRows = [NSMutableArray arrayWithCapacity:[rows count]];
     [rows enumerateObjectsUsingBlock:^(CBLQueryRow *obj, NSUInteger idx, BOOL *stop) {
         if (obj.document) {
-            NSDictionary *serializedDoc = [self serializeDocument:obj.document];
-            if (serializedDoc) {
-                [mappedRows addObject:serializedDoc];
+            if (!obj.document.isDeleted) {
+                NSDictionary *serializedDoc = [self serializeDocument:obj.document];
+                if (serializedDoc) {
+                    [mappedRows addObject:serializedDoc];
+                }
             }
         } else {
             [mappedRows addObject:@{ @"key": obj.key, @"value": obj.value == nil ? [NSNull null] : obj.value }];

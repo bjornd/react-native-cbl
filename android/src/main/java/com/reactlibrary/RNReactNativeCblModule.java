@@ -108,7 +108,7 @@ public class RNReactNativeCblModule extends ReactContextBaseJavaModule implement
     if (doc == null) {
       promise.reject("update_document", "Can not find document");
     } else {
-      promise.resolve( ConversionUtil.toWritableMap( new HashMap<String, Object>(doc.getProperties())) );
+      promise.resolve( ConversionUtil.toWritableMap( this.serializeDocument(doc) ) );
     }
   }
 
@@ -167,8 +167,12 @@ public class RNReactNativeCblModule extends ReactContextBaseJavaModule implement
         DocumentChange docChange = event.getChange();
         WritableMap params = Arguments.createMap();
         params.putString("uuid", uuid);
-        Map<String, Object> props = self.serializeDocument(doc);
-        params.putMap("data", ConversionUtil.toWritableMap(props));
+        if (docChange.isDeletion()) {
+          params.putMap("data", ConversionUtil.toWritableMap( new HashMap<String, Object>() ));
+        } else {
+          Map<String, Object> props = self.serializeDocument(doc);
+          params.putMap("data", ConversionUtil.toWritableMap(props));
+        }
         self.sendEvent("liveDocumentChange", params);
       }
     });
@@ -319,15 +323,17 @@ public class RNReactNativeCblModule extends ReactContextBaseJavaModule implement
   private HashMap<String, Object> serializeDocument(Document document) {
     HashMap<String, Object> properties = new HashMap<>(document.getProperties());
     Map<String, Object> attachments = (Map<String, Object>)properties.get("_attachments");
-    HashMap<String, Object> mappedAttachments = new HashMap<>();
-    for (Map.Entry<String, Object> entry : attachments.entrySet())
-    {
-      Map<String, Object> attData = new HashMap<>((Map<String, Object>)entry.getValue());
-      String attName = entry.getKey();
-      attData.put("url", document.getCurrentRevision().getAttachment(attName).getContentURL().toString());
-      mappedAttachments.put(attName, attData);
+    if (attachments != null) {
+      HashMap<String, Object> mappedAttachments = new HashMap<>();
+      for (Map.Entry<String, Object> entry : attachments.entrySet())
+      {
+        Map<String, Object> attData = new HashMap<>((Map<String, Object>)entry.getValue());
+        String attName = entry.getKey();
+        attData.put("url", document.getCurrentRevision().getAttachment(attName).getContentURL().toString());
+        mappedAttachments.put(attName, attData);
+      }
+      properties.put("_attachments", mappedAttachments);
     }
-    properties.put("_attachments", mappedAttachments);
     return properties;
   }
 
@@ -339,9 +345,11 @@ public class RNReactNativeCblModule extends ReactContextBaseJavaModule implement
       Replication pull = this.db.createPullReplication(url);
       pull.setContinuous(true);
       push.setContinuous(true);
-      Authenticator auth = AuthenticatorFactory.createFacebookAuthenticator(facebookToken);
-      push.setAuthenticator(auth);
-      pull.setAuthenticator(auth);
+      //Authenticator auth = AuthenticatorFactory.createFacebookAuthenticator(facebookToken);
+      //push.setAuthenticator(auth);
+      //pull.setAuthenticator(auth);
+      push.start();
+      pull.start();
       promise.resolve(null);
     } catch (MalformedURLException e) {
       promise.reject("start_replication", "Malformed remote URL", e);
