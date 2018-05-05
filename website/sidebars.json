@@ -1,0 +1,21 @@
+{
+  "docs": {
+    "Basics": [
+      "introduction",
+      "installation",
+      "documents-and-views",
+      "accessing-cbl-from-rn",
+      "cbl-provider",
+      "example-app"
+    ],
+    "Advanced Topics": [
+      "attachments",
+      "replication",
+      "authorization",
+      "prebuilt-db"
+    ]
+  },
+  "docs-other": {
+    "First Category": ["doc4", "doc5"]
+  }
+}
