@@ -16,6 +16,9 @@
     ]
   },
   "docs-other": {
-    "First Category": ["doc4", "doc5"]
+    "API": [
+      "api-react-native-cbl",
+      "api-cbl-provider-decorator"
+    ]
   }
 }

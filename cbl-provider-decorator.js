@@ -6,6 +6,32 @@ import CouchbaseLite from './react-native-cbl'
 
 const cblEventEmitter = new NativeEventEmitter(CouchbaseLite)
 
+/**
+ * @typedef cblProvider~QueryConfig
+ * @type {object}
+ * @property {string} docId - document id
+ * @property {boolean} live - supply false to turn off live updates
+ */
+
+ /**
+  * @typedef cblProvider~DocumentConfig
+  * @type {Object}
+  * @property {number} view - view name
+  * @property {boolean} live - supply false to turn off live updates
+  */
+
+/**
+ * function accepting component props and returning config object
+ * @callback cblProvider~getParams
+ * @param {object} properties Component properties
+ * @returns {Object.<string, QueryConfig|DocumentConfig>} Configuration object describing what data to fetch
+ */
+
+/**
+ * Docorator function for your components allowing easier access to Couchbase Lite data
+ * @param {function} getParams
+ * @returns {React.Component}
+ */
 export function cblProvider(getParams) {
   return WrappedComponent => {
     class CblProvider extends React.Component {
