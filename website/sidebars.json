@@ -17,8 +17,7 @@
   },
   "docs-other": {
     "API": [
-      "api-react-native-cbl",
-      "api-cbl-provider-decorator"
+      "api-react-native-cbl"
     ]
   }
 }
