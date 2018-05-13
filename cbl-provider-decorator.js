@@ -3,40 +3,19 @@ import { NativeEventEmitter } from 'react-native'
 import { entriesToObject } from './utils'
 import hoistNonReactStatics from 'hoist-non-react-statics'
 import CouchbaseLite from './react-native-cbl'
+import PropTypes from 'prop-types'
 
 const cblEventEmitter = new NativeEventEmitter(CouchbaseLite)
 
-/**
- * @typedef cblProvider~QueryConfig
- * @type {object}
- * @property {string} docId - document id
- * @property {boolean} live - supply false to turn off live updates
- */
-
- /**
-  * @typedef cblProvider~DocumentConfig
-  * @type {Object}
-  * @property {number} view - view name
-  * @property {boolean} live - supply false to turn off live updates
-  */
-
-/**
- * function accepting component props and returning config object
- * @callback cblProvider~getParams
- * @param {object} properties Component properties
- * @returns {Object.<string, QueryConfig|DocumentConfig>} Configuration object describing what data to fetch
- */
-
-/**
- * Docorator function for your components allowing easier access to Couchbase Lite data
- * @param {function} getParams
- * @returns {React.Component}
- */
 export function cblProvider(getParams) {
   return WrappedComponent => {
     class CblProvider extends React.Component {
-      constructor(props) {
-        super(props)
+      static contextTypes = {
+        cblConnection: PropTypes.object,
+      }
+
+      constructor(props, context) {
+        super(props, context)
 
         this.liveQueries = {}
         this.liveDocuments = {}
@@ -55,11 +34,11 @@ export function cblProvider(getParams) {
           'liveDocumentChange', this.onLiveDocumentChange.bind(this)
         )
 
-        this.createQueries(props)
+        this.createQueries(props, context.cblConnection)
       }
 
-      createQueries(props) {
-        CouchbaseLite.openDb(CouchbaseLite.defaultDbName, true).then( () =>
+      createQueries(props, connection) {
+        connection.promise.then( () =>
           Object.entries( getParams(props) ).forEach( ([key, values]) => {
             if (values.view) {
               if (values.live === false) {

@@ -13,7 +13,7 @@ const proxyMethods = {
    */
   openDb: function(nativeMethod, ...args){
     this.defaultDbName = args[0]
-    return nativeOpenDb.apply( this, args )
+    return nativeMethod.apply( this, args )
   },
 
   /**
@@ -133,6 +133,7 @@ const applyProxy = (target, methods) => {
       target[name] = method.bind(target, target[name])
     }
   })
+  return target
 }
 
 export default applyProxy(CouchbaseLite, proxyMethods)
