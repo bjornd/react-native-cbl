@@ -22,14 +22,14 @@ const siteConfig = {
   title: 'React Native Couchbase Lite' /* title for your website */,
   tagline: 'Offline-first React Native applications done easy',
   url: 'https://react-native-cbl.github.io' /* your website url */,
-  baseUrl: '/' /* base url for your project */,
+  baseUrl: '/react-native-cbl/' /* base url for your project */,
   // For github.io type URLs, you would set the url and baseUrl like:
   //   url: 'https://facebook.github.io',
   //   baseUrl: '/test-site/',
 
   // Used for publishing and more
   projectName: 'react-native-cbl',
-  organizationName: 'react-native-cbl',
+  organizationName: 'bjornd',
   // For top-level user or org sites, the organization is still the same.
   // e.g., for the https://JoelMarcey.github.io site, it would be set like...
   //   organizationName: 'JoelMarcey'
