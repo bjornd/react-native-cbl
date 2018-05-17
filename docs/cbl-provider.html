@@ -1,0 +1,91 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/><meta http-equiv="X-UA-Compatible" content="IE=edge"/><title>cblProvider · React Native Couchbase Lite</title><meta name="viewport" content="width=device-width"/><meta name="generator" content="Docusaurus"/><meta property="og:title" content="cblProvider · React Native Couchbase Lite"/><meta property="og:type" content="website"/><meta property="og:url" content="https://react-native-cbl.github.io/index.html"/><meta property="og:description" content="react-native-cbl provides a very convenient way to access data from Couchbase Lite using HOC pattern. To activate this ability for components you first need to add `&lt;CBLConnector&gt;` component to your application, so it will be a ancestor for any underlying component requiring access to Couchbase Lite. This is somewhat similar to `&lt;Provider&gt;` component in redux:"/><meta property="og:image" content="https://react-native-cbl.github.io/img/icon.png"/><meta name="twitter:card" content="summary"/><meta name="twitter:image" content="https://react-native-cbl.github.io/img/icon.png"/><link rel="shortcut icon" href="/img/favicon.png"/><link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css"/><script type="text/javascript" src="https://buttons.github.io/buttons.js"></script><link rel="stylesheet" href="/css/main.css"/></head><body class="sideNavVisible doc separateOnPageNav"><div class="fixedHeaderContainer"><div class="headerWrapper wrapper"><header><a href="/"><img class="logo" src="/img/icon.svg" alt="React Native Couchbase Lite"/><h2 class="headerTitle">React Native Couchbase Lite</h2></a><div class="navigationWrapper navigationSlider"><nav class="slidingNav"><ul class="nav-site nav-site-internal"><li class="siteNavGroupActive"><a href="/docs/introduction.html" target="_self">Docs</a></li><li class=""><a href="/docs/api-react-native-cbl.html" target="_self">API</a></li><li class=""><a href="/en/help.html" target="_self">Help</a></li><li class=""><a href="https://github.com/bjornd/react-native-cbl" target="_self">GitHub</a></li></ul></nav></div></header></div></div><div class="navPusher"><div class="docMainWrapper wrapper"><div class="container docsNavContainer" id="docsNav"><nav class="toc"><div class="toggleNav"><section class="navWrapper wrapper"><div class="navBreadcrumb wrapper"><div class="navToggle" id="navToggler"><i></i></div><h2><i>›</i><span>Basics</span></h2></div><div class="navGroups"><div class="navGroup navGroupActive"><h3>Basics</h3><ul><li class="navListItem"><a class="navItem" href="/docs/introduction.html">Introduction</a></li><li class="navListItem"><a class="navItem" href="/docs/installation.html">Installation</a></li><li class="navListItem"><a class="navItem" href="/docs/documents-and-views.html">Views and Documents</a></li><li class="navListItem"><a class="navItem" href="/docs/accessing-cbl-from-rn.html">Accessing Couchbase Lite from React Native</a></li><li class="navListItem navListItemActive"><a class="navItem navItemActive" href="/docs/cbl-provider.html">cblProvider</a></li><li class="navListItem"><a class="navItem" href="/docs/example-app.html">Example App</a></li></ul></div><div class="navGroup navGroupActive"><h3>Advanced Topics</h3><ul><li class="navListItem"><a class="navItem" href="/docs/attachments.html">Attachments</a></li><li class="navListItem"><a class="navItem" href="/docs/replication.html">Replication</a></li><li class="navListItem"><a class="navItem" href="/docs/authorization.html">Authorization</a></li><li class="navListItem"><a class="navItem" href="/docs/prebuilt-db.html">Prebuilt Databases</a></li></ul></div></div></section></div><script>
+          var toggler = document.getElementById('navToggler');
+          var nav = document.getElementById('docsNav');
+          toggler.onclick = function() {
+            nav.classList.toggle('docsSliderActive');
+          };
+        </script></nav></div><div class="container mainContainer"><div class="wrapper"><div class="post"><header class="postHeader"><h1>cblProvider</h1></header><article><div><span><p>react-native-cbl provides a very convenient way to access data from Couchbase Lite using HOC pattern. To activate this ability for components you first need to add <code>&lt;CBLConnector&gt;</code> component to your application, so it will be a ancestor for any underlying component requiring access to Couchbase Lite. This is somewhat similar to <code>&lt;Provider&gt;</code> component in redux:</p>
+<pre><code class="hljs"><span class="hljs-keyword">import</span> { CBLConnection, CBLConnector } <span class="hljs-keyword">from</span> <span class="hljs-string">'react-native-cbl'</span>
+
+<span class="hljs-keyword">const</span> cblConnection = <span class="hljs-keyword">new</span> CBLConnection({
+  <span class="hljs-attr">dbName</span>: <span class="hljs-string">'mydb'</span>,
+  <span class="hljs-attr">syncGatewayUrl</span>: <span class="hljs-string">'http://sg.myapp.com/mydb'</span>,
+  <span class="hljs-attr">views</span>: { ... },
+})
+
+<span class="hljs-keyword">export</span> <span class="hljs-keyword">default</span> <span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">App</span> <span class="hljs-keyword">extends</span> <span class="hljs-title">React</span>.<span class="hljs-title">Component</span> </span>{
+  render() {
+    <span class="hljs-keyword">return</span> (
+      <span class="xml"><span class="hljs-tag">&lt;<span class="hljs-name">CBLConnector</span> <span class="hljs-attr">connection</span>=<span class="hljs-string">{cblConnection}</span>&gt;</span>
+        ...
+      <span class="hljs-tag">&lt;/<span class="hljs-name">CBLConnector</span>&gt;</span></span>
+    )
+  }
+}
+</code></pre>
+<p>After that <code>cblProvider</code> can be used to decorate components requiring some data from Couchbase Lite:</p>
+<pre><code class="hljs">@cblProvider( <span class="hljs-function"><span class="hljs-params">props</span> =&gt;</span> ({
+  ...
+}))
+<span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">ItemView</span> <span class="hljs-keyword">extends</span> <span class="hljs-title">React</span>.<span class="hljs-title">Component</span> </span>{
+  ...
+}
+</code></pre>
+<p>Callback passed to cblProvider returns configuration object, keys of this object will be converted to corresponding component props holding data retrieved from Couchbase Lite.</p>
+<pre><code class="hljs">@cblProvider( <span class="hljs-function"><span class="hljs-params">props</span> =&gt;</span> ({
+  <span class="hljs-attr">item</span>: {
+    <span class="hljs-attr">docId</span>: <span class="hljs-string">'documentid'</span>,
+  },
+  <span class="hljs-attr">subitems</span>: {
+    <span class="hljs-attr">view</span>: <span class="hljs-string">'viewname'</span>,
+  },
+}))
+<span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">ItemView</span> <span class="hljs-keyword">extends</span> <span class="hljs-title">React</span>.<span class="hljs-title">Component</span> </span>{
+  render() {
+    <span class="hljs-keyword">return</span> (
+      <span class="xml"><span class="hljs-tag">&lt;<span class="hljs-name">View</span>&gt;</span>
+        <span class="hljs-tag">&lt;<span class="hljs-name">Text</span>&gt;</span>{this.props.item.title}<span class="hljs-tag">&lt;/<span class="hljs-name">Text</span>&gt;</span>
+        { this.props.subitems.map( subitem =&gt; <span class="hljs-tag">&lt;<span class="hljs-name">View</span>&gt;</span>{subitem.text}<span class="hljs-tag">&lt;/<span class="hljs-name">View</span>&gt;</span> ) }
+      <span class="hljs-tag">&lt;/<span class="hljs-name">View</span>&gt;</span></span>
+    )
+  }
+}
+</code></pre>
+<p>Callback function passed to cblProvider accepts component props. This could be used to dynamically generate config:</p>
+<pre><code class="hljs">@cblProvider( <span class="hljs-function"><span class="hljs-params">props</span> =&gt;</span> ({
+  <span class="hljs-attr">item</span>: {
+    <span class="hljs-attr">docId</span>: props.itemId,
+  },
+  <span class="hljs-attr">subitems</span>: {
+    <span class="hljs-attr">view</span>: <span class="hljs-string">'viewname'</span>,
+    <span class="hljs-attr">params</span>: {
+      <span class="hljs-attr">descending</span>: props.direction === <span class="hljs-string">'desc'</span>,
+    }
+  },
+}))
+</code></pre>
+<p>By default cblProvider not only retrieve data once, it also listens to any related changes in database and updates data passed to component accordingly. This behavior can be changed by using <code>live: false</code> parameter:</p>
+<pre><code class="hljs">@cblProvider( <span class="hljs-function"><span class="hljs-params">props</span> =&gt;</span> ({
+  <span class="hljs-attr">item</span>: {
+    <span class="hljs-attr">docId</span>: props.itemId,
+    <span class="hljs-attr">live</span>: <span class="hljs-literal">false</span>,
+  },
+  <span class="hljs-attr">subitems</span>: {
+    <span class="hljs-attr">view</span>: <span class="hljs-string">'viewname'</span>,
+    <span class="hljs-attr">live</span>: <span class="hljs-literal">false</span>,
+  },
+}))
+</code></pre>
+<p>View queries support additional option <code>params</code>, which modifies the way view is queried by Couchbase Lite. The full list of available options is available at the Couchbase Lite <a href="https://developer.couchbase.com/documentation/mobile/1.5/guides/couchbase-lite/native-api/query/index.html#creating-and-configuring-queries">Query API reference</a>.</p>
+<pre><code class="hljs">@cblProvider( <span class="hljs-function"><span class="hljs-params">props</span> =&gt;</span> ({
+  <span class="hljs-attr">items</span>: {
+    <span class="hljs-attr">view</span>: <span class="hljs-string">'viewname'</span>,
+    <span class="hljs-attr">params</span>: {
+      <span class="hljs-attr">descending</span>: <span class="hljs-literal">true</span>,
+      <span class="hljs-attr">startKey</span>: <span class="hljs-string">'a'</span>,
+      <span class="hljs-attr">endKey</span>: <span class="hljs-string">'b'</span>,
+    }
+  },
+}))
+</code></pre>
+</span></div></article></div><div class="docs-prevnext"><a class="docs-prev button" href="accessing-cbl-from-rn.html">← Accessing Couchbase Lite from React Native</a><a class="docs-next button" href="example-app.html">Example App →</a></div></div></div><nav class="onPageNav"></nav></div><footer class="nav-footer" id="footer"><section class="sitemap"><a href="/" class="nav-home"><img src="/img/icon.svg" alt="React Native Couchbase Lite" width="66" height="58"/></a><div><h5>Docs</h5><a href="/docs/en/introduction.html">Introduction</a><a href="/docs/en/api-react-native-cbl.html">API reference</a></div></section><section class="copyright">Copyright © 2018</section></footer></div></body></html>
