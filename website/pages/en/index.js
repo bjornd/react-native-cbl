@@ -76,14 +76,13 @@ class HomeSplash extends React.Component {
     let language = this.props.language || '';
     return (
       <SplashContainer>
-        <Logo img_src={imgUrl('docusaurus.svg')} />
         <div className="inner">
           <ProjectTitle />
-          <PromoSection>
+          {/*<PromoSection>
             <Button href="#try">Try It Out</Button>
             <Button href={docUrl('doc1.html', language)}>Example Link</Button>
             <Button href={docUrl('doc2.html', language)}>Example Link 2</Button>
-          </PromoSection>
+          </PromoSection>*/}
         </div>
       </SplashContainer>
     );
@@ -100,20 +99,39 @@ const Block = props => (
 );
 
 const Features = props => (
-  <Block layout="fourColumn">
+  <Block layout="threeColumn">
     {[
       {
-        content: 'This is the content of my feature',
-        image: imgUrl('docusaurus.svg'),
-        imageAlign: 'top',
-        title: 'Feature One',
-      },
-      {
         content: 'The content of my second feature',
-        image: imgUrl('docusaurus.svg'),
+        image: imgUrl('all-native.svg'),
         imageAlign: 'top',
-        title: 'Feature Two',
-      },
+        title: 'All-Native',
+      },{
+        content: 'This is the content of my feature',
+        image: imgUrl('offline-first.svg'),
+        imageAlign: 'top',
+        title: 'Offline First',
+      },{
+        content: 'The content of my second feature',
+        image: imgUrl('lightweight.svg'),
+        imageAlign: 'top',
+        title: 'Lightweight',
+      },{
+        content: 'This is the content of my feature',
+        image: imgUrl('live-updates.svg'),
+        imageAlign: 'top',
+        title: 'Live Updates',
+      },{
+        content: 'This is the content of my feature',
+        image: imgUrl('built-in-auth.svg'),
+        imageAlign: 'top',
+        title: 'Built-in Auth',
+      },{
+        content: 'The content of my second feature',
+        image: imgUrl('attachments.svg'),
+        imageAlign: 'top',
+        title: 'Attachments Support',
+      }
     ]}
   </Block>
 );
@@ -205,11 +223,11 @@ class Index extends React.Component {
         <HomeSplash language={language} />
         <div className="mainContainer">
           <Features />
-          <FeatureCallout />
+          {/*<FeatureCallout />
           <LearnHow />
           <TryOut />
           <Description />
-          <Showcase language={language} />
+          <Showcase language={language} />*/}
         </div>
       </div>
     );

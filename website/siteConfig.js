@@ -43,11 +43,11 @@ const siteConfig = {
   ],
 
   // If you have users set above, you add it here:
-  users,
+  //users,
 
   /* path to images for header/footer */
   headerIcon: 'img/icon.svg',
-  footerIcon: 'img/docusaurus.svg',
+  footerIcon: 'img/icon.svg',
   favicon: 'img/favicon.png',
 
   /* colors for website */
@@ -71,8 +71,8 @@ const siteConfig = {
   // This copyright info is used in /core/Footer.js and blog rss/atom feeds.
   copyright:
     'Copyright © ' +
-    new Date().getFullYear() +
-    ' Your Name or Your Company Name',
+    new Date().getFullYear() + '',
+    /*' Your Name or Your Company Name',*/
 
   highlight: {
     // Highlight.js theme to use for syntax highlighting in code blocks
@@ -87,8 +87,8 @@ const siteConfig = {
   onPageNav: 'separate',
 
   /* Open Graph and Twitter card images */
-  ogImage: 'img/docusaurus.png',
-  twitterImage: 'img/docusaurus.png',
+  ogImage: 'img/icon.png',
+  twitterImage: 'img/icon.png',
 
   // You may provide arbitrary config keys to be used as needed by your
   // template. For example, if you need your repo's URL...
