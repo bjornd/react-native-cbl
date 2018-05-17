@@ -1,7 +1,27 @@
 ---
 title: cblProvider
 ---
-cblProvider is decorator function for your components allowing easier access to Couchbase Lite data. It is usually used the following way:
+react-native-cbl provides a very convenient way to access data from Couchbase Lite using HOC pattern. To activate this ability for components you first need to add `<CBLConnector>` component to your application, so it will be a ancestor for any underlying component requiring access to Couchbase Lite. This is somewhat similar to `<Provider>` component in redux:
+```
+import { CBLConnection, CBLConnector } from 'react-native-cbl'
+
+const cblConnection = new CBLConnection({
+  dbName: 'mydb',
+  syncGatewayUrl: 'http://sg.myapp.com/mydb',
+  views: { ... },
+})
+
+export default class App extends React.Component {
+  render() {
+    return (
+      <CBLConnector connection={cblConnection}>
+        ...
+      </CBLConnector>
+    )
+  }
+}
+```
+After that `cblProvider` can be used to decorate components requiring some data from Couchbase Lite:
 ```
 @cblProvider( props => ({
   ...
@@ -10,7 +30,7 @@ class ItemView extends React.Component {
   ...
 }
 ```
-Callback passed to cblProvider returns configuration object, keys of this object will be converted to corresponding props of the component holding data retrieved from Couchbase Lite.
+Callback passed to cblProvider returns configuration object, keys of this object will be converted to corresponding component props holding data retrieved from Couchbase Lite.
 ```
 @cblProvider( props => ({
   item: {
