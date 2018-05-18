@@ -102,32 +102,32 @@ const Features = props => (
   <Block layout="threeColumn">
     {[
       {
-        content: 'The content of my second feature',
+        content: 'All the critical code is written in Objective C and Java providing maximum performance and functionality',
         image: imgUrl('all-native.svg'),
         imageAlign: 'top',
         title: 'All-Native',
       },{
-        content: 'This is the content of my feature',
+        content: 'Any changes are first saved to device syncing with server and other devices when connection is available',
         image: imgUrl('offline-first.svg'),
         imageAlign: 'top',
         title: 'Offline First',
       },{
-        content: 'The content of my second feature',
+        content: 'Small memory footprint and quick startup time',
         image: imgUrl('lightweight.svg'),
         imageAlign: 'top',
         title: 'Lightweight',
       },{
-        content: 'This is the content of my feature',
+        content: 'Any changes in database are immidiatly reflected in the UI',
         image: imgUrl('live-updates.svg'),
         imageAlign: 'top',
         title: 'Live Updates',
       },{
-        content: 'This is the content of my feature',
+        content: 'Built-in support for authorization using Facebook SDK, OAuth and any custom implementation',
         image: imgUrl('built-in-auth.svg'),
         imageAlign: 'top',
         title: 'Built-in Auth',
       },{
-        content: 'The content of my second feature',
+        content: 'Attachments are stored separately but handled the same way as other data providing a seamless experience for developers',
         image: imgUrl('attachments.svg'),
         imageAlign: 'top',
         title: 'Attachments Support',
