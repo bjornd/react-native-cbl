@@ -78,11 +78,10 @@ class HomeSplash extends React.Component {
       <SplashContainer>
         <div className="inner">
           <ProjectTitle />
-          {/*<PromoSection>
-            <Button href="#try">Try It Out</Button>
-            <Button href={docUrl('doc1.html', language)}>Example Link</Button>
-            <Button href={docUrl('doc2.html', language)}>Example Link 2</Button>
-          </PromoSection>*/}
+          <PromoSection>
+            <Button href={docUrl('introduction.html', language)}>Get Started</Button>
+            <Button href={docUrl('api-react-native-cbl.html', language)}>API</Button>
+          </PromoSection>
         </div>
       </SplashContainer>
     );
