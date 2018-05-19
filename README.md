@@ -64,3 +64,7 @@ export default class App extends React.Component {
   }
 }
 ```
+
+## Demo App
+
+There is a demo app available at https://github.com/bjornd/ReactNativeNotes 
