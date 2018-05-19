@@ -1,17 +1,21 @@
 import React from 'react'
 import { NativeEventEmitter } from 'react-native'
 import { entriesToObject } from './utils'
-import { NativeModules } from 'react-native'
 import hoistNonReactStatics from 'hoist-non-react-statics'
+import CouchbaseLite from './react-native-cbl'
+import PropTypes from 'prop-types'
 
-const { RNReactNativeCbl } = NativeModules
-const cblEventEmitter = new NativeEventEmitter(RNReactNativeCbl)
+const cblEventEmitter = new NativeEventEmitter(CouchbaseLite)
 
 export function cblProvider(getParams) {
   return WrappedComponent => {
     class CblProvider extends React.Component {
-      constructor(props) {
-        super(props)
+      static contextTypes = {
+        cblConnection: PropTypes.object,
+      }
+
+      constructor(props, context) {
+        super(props, context)
 
         this.liveQueries = {}
         this.liveDocuments = {}
@@ -30,34 +34,34 @@ export function cblProvider(getParams) {
           'liveDocumentChange', this.onLiveDocumentChange.bind(this)
         )
 
-        this.createQueries(props)
+        this.createQueries(props, context.cblConnection)
       }
 
-      createQueries(props) {
-        RNReactNativeCbl.openDb('odygos', true).then( () =>
+      createQueries(props, connection) {
+        connection.promise.then( () =>
           Object.entries( getParams(props) ).forEach( ([key, values]) => {
             if (values.view) {
               if (values.live === false) {
-                RNReactNativeCbl.query(values.view, values.params).then( data => {
+                CouchbaseLite.query(values.view, values.params).then( data => {
                   this.setState( ({ results }) => {
                     return ({ results: { ...results, [key]: data } })
                   })
                 })
               } else {
-                RNReactNativeCbl.createLiveQuery(values.view, values.params).then( uuid => {
+                CouchbaseLite.createLiveQuery(values.view, values.params).then( uuid => {
                   this.liveQueries[uuid] = key
                   this.postProcess[uuid] = values.postProcess
                 })
               }
             } else if (values.docId) {
               if (values.live === false) {
-                RNReactNativeCbl.getDocument(values.docId).then( data => {
+                CouchbaseLite.getDocument(values.docId).then( data => {
                   this.setState( ({ results }) =>
                     ({ results: { ...results, [key]: data } })
                   )
                 })
               } else {
-                RNReactNativeCbl.createLiveDocument(values.docId).then( uuid => {
+                CouchbaseLite.createLiveDocument(values.docId).then( uuid => {
                   this.liveDocuments[uuid] = key
                 })
               }
@@ -89,11 +93,11 @@ export function cblProvider(getParams) {
 
       componentWillUnmount() {
         Object.entries( this.liveQueries ).forEach( ([key, value]) => {
-          RNReactNativeCbl.destroyLiveQuery( key )
+          CouchbaseLite.destroyLiveQuery( key )
           delete this.liveQueries[key]
         })
         Object.entries( this.liveDocuments ).forEach( ([key, value]) => {
-          RNReactNativeCbl.destroyLiveDocument( key )
+          CouchbaseLite.destroyLiveDocument( key )
           delete this.liveDocuments[key]
         })
         this.liveQueryListener.remove()

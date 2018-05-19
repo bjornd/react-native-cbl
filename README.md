@@ -1,13 +1,19 @@
 
-# react-native-react-native-cbl
+# react-native-cbl
+
+react-native-cbl is a React Native module providing an easy way to create offline-first, lightweight and performant mobile application on both iOS and Android platforms. This is an all-native wrapper over Couchbase Lite, which is a document-oriented database running right on the mobile devices.
 
 ## Getting started
 
-`$ npm install react-native-react-native-cbl --save`
+`$ npm install react-native-cbl --save`
+
+or
+
+`$ yarn add react-native-cbl`
 
 ### Mostly automatic installation
 
-`$ react-native link react-native-react-native-cbl`
+`$ react-native link react-native-cbl`
 
 ### Manual installation
 
@@ -15,7 +21,7 @@
 #### iOS
 
 1. In XCode, in the project navigator, right click `Libraries` ➜ `Add Files to [your project's name]`
-2. Go to `node_modules` ➜ `react-native-react-native-cbl` and add `RNReactNativeCbl.xcodeproj`
+2. Go to `node_modules` ➜ `react-native-cbl` and add `RNReactNativeCbl.xcodeproj`
 3. In XCode, in the project navigator, select your project. Add `libRNReactNativeCbl.a` to your project's `Build Phases` ➜ `Link Binary With Libraries`
 4. Run your project (`Cmd+R`)<
 
@@ -26,28 +32,35 @@
   - Add `new RNReactNativeCblPackage()` to the list returned by the `getPackages()` method
 2. Append the following lines to `android/settings.gradle`:
   	```
-  	include ':react-native-react-native-cbl'
-  	project(':react-native-react-native-cbl').projectDir = new File(rootProject.projectDir, 	'../node_modules/react-native-react-native-cbl/android')
+  	include ':react-native-cbl'
+  	project(':react-native-cbl').projectDir = new File(rootProject.projectDir, 	'../node_modules/react-native-cbl/android')
   	```
 3. Insert the following lines inside the dependencies block in `android/app/build.gradle`:
   	```
-      compile project(':react-native-react-native-cbl')
+      compile project(':react-native-cbl')
   	```
-
-#### Windows
-[Read it! :D](https://github.com/ReactWindows/react-native)
-
-1. In Visual Studio add the `RNReactNativeCbl.sln` in `node_modules/react-native-react-native-cbl/windows/RNReactNativeCbl.sln` folder to their solution, reference from their app.
-2. Open up your `MainPage.cs` app
-  - Add `using React.Native.Cbl.RNReactNativeCbl;` to the usings at the top of the file
-  - Add `new RNReactNativeCblPackage()` to the `List<IReactPackage>` returned by the `Packages` method
-
 
 ## Usage
 ```javascript
-import RNReactNativeCbl from 'react-native-react-native-cbl';
+import CouchbaseLite, { CBLConnection, CBLConnector } from 'react-native-cbl'
 
-// TODO: What to do with the module?
-RNReactNativeCbl;
+const cblConnection = new CBLConnection({
+  dbName: 'mydb',
+  syncGatewayUrl: 'http://sg.myapp.com/mydb',
+  views: { ... },
+})
+
+export default class App extends React.Component {
+  onButtonClicked() {
+    CouchbaseLite.createDocument({ title: 'New Title', text: 'Description' })
+  }
+
+  render() {
+    return (
+      <CBLConnector connection={cblConnection}>
+        ...
+      </CBLConnector>
+    )
+  }
+}
 ```
-  

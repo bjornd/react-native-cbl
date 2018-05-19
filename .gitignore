@@ -8,7 +8,7 @@
 node_modules/
 npm-debug.log
 yarn-error.log
-  
+
 
 # Xcode
 #
@@ -29,7 +29,7 @@ DerivedData
 *.ipa
 *.xcuserstate
 project.xcworkspace
-      
+
 
 # Android/IntelliJ
 #
@@ -43,4 +43,16 @@ local.properties
 buck-out/
 \.buckd/
 *.keystore
-      
+
+# Docusaurus
+lib/core/metadata.js
+lib/core/MetadataBlog.js
+
+website/translated_docs
+website/build/
+website/yarn.lock
+website/node_modules
+website/i18n/*
+!website/i18n/en.json
+
+docs/api-react-native-cbl.md

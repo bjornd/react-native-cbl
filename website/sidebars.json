@@ -1,0 +1,23 @@
+{
+  "docs": {
+    "Basics": [
+      "introduction",
+      "installation",
+      "documents-and-views",
+      "accessing-cbl-from-rn",
+      "cbl-provider",
+      "example-app"
+    ],
+    "Advanced Topics": [
+      "attachments",
+      "replication",
+      "authorization",
+      "prebuilt-db"
+    ]
+  },
+  "docs-other": {
+    "API": [
+      "api-react-native-cbl"
+    ]
+  }
+}
