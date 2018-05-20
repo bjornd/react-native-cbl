@@ -85,10 +85,10 @@ RCT_EXPORT_METHOD(updateDocument:(NSString*)docId
                   rejecter:(RCTPromiseRejectBlock)reject)
 {
     CBLDocument* doc = [_db documentWithID:docId];
-    //if (!doc) {
-    //    reject(@"document_update", @"Can not find document", nil);
-    //    return;
-    //}
+    if (!doc) {
+       reject(@"document_update", @"Can not find document", nil);
+       return;
+    }
     NSError* error;
     if (![doc update: ^BOOL(CBLUnsavedRevision *newRev) {
         for (id key in properties) {
