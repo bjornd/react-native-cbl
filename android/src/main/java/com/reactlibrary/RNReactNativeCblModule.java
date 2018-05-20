@@ -345,9 +345,11 @@ public class RNReactNativeCblModule extends ReactContextBaseJavaModule implement
       Replication pull = this.db.createPullReplication(url);
       pull.setContinuous(true);
       push.setContinuous(true);
-      //Authenticator auth = AuthenticatorFactory.createFacebookAuthenticator(facebookToken);
-      //push.setAuthenticator(auth);
-      //pull.setAuthenticator(auth);
+      if (facebookToken != null) {
+        Authenticator auth = AuthenticatorFactory.createFacebookAuthenticator(facebookToken);
+        push.setAuthenticator(auth);
+        pull.setAuthenticator(auth);
+      }
       push.start();
       pull.start();
       promise.resolve(null);

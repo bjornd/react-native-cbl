@@ -261,9 +261,11 @@ RCT_EXPORT_METHOD(startReplication:(NSString*)remoteUrl
     CBLReplication *push = [_db createPushReplication: url];
     CBLReplication *pull = [_db createPullReplication: url];
     push.continuous = pull.continuous = YES;
-    //id<CBLAuthenticator> auth;
-    //auth = [CBLAuthenticator facebookAuthenticatorWithToken:facebookToken];
-    //push.authenticator = pull.authenticator = auth;
+    if (facebookToken != nil) {
+        id<CBLAuthenticator> auth;
+        auth = [CBLAuthenticator facebookAuthenticatorWithToken:facebookToken];
+        push.authenticator = pull.authenticator = auth;
+    }
     [push start];
     [pull start];
     _push = push;
