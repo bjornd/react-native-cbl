@@ -128,10 +128,10 @@ public class RNReactNativeCblModule extends ReactContextBaseJavaModule implement
   @ReactMethod
   public void updateDocument(String docId, ReadableMap properties, Promise promise) {
     Document doc = this.db.getDocument(docId);
-    //if (doc == null) {
-    //  promise.reject("update_document", "Can not find document");
-    //  return;
-    //}
+    if (doc == null) {
+     promise.reject("update_document", "Can not find document");
+     return;
+    }
     Map<String, Object> props = new HashMap<>();
     if (doc.getCurrentRevision() != null) {
       props.putAll(doc.getProperties());
@@ -345,9 +345,11 @@ public class RNReactNativeCblModule extends ReactContextBaseJavaModule implement
       Replication pull = this.db.createPullReplication(url);
       pull.setContinuous(true);
       push.setContinuous(true);
-      //Authenticator auth = AuthenticatorFactory.createFacebookAuthenticator(facebookToken);
-      //push.setAuthenticator(auth);
-      //pull.setAuthenticator(auth);
+      if (facebookToken != null) {
+        Authenticator auth = AuthenticatorFactory.createFacebookAuthenticator(facebookToken);
+        push.setAuthenticator(auth);
+        pull.setAuthenticator(auth);
+      }
       push.start();
       pull.start();
       promise.resolve(null);

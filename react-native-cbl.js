@@ -56,7 +56,7 @@ const proxyMethods = {
   deleteDocument: null,
 
   /**
-   * Start listening for document changes, returns current document properties immidiatly
+   * Start listening for document changes, returns current document properties immediatly
    * @kind function
    * @memberof CouchbaseLite
    * @param {String} docId - Document id
@@ -86,7 +86,7 @@ const proxyMethods = {
   query: null,
 
   /**
-   * Start listening for query updates, returns current query data immidiatly
+   * Start listening for query updates, returns current query data immediatly
    * @kind function
    * @memberof CouchbaseLite
    * @param {String} view - View name to query

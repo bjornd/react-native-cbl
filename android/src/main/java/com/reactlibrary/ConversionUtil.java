@@ -206,8 +206,6 @@ import javax.annotation.Nullable;
             } else if (value instanceof List) {
                 writableMap.putArray((String) pair.getKey(), ConversionUtil.toWritableArray(((List) value).toArray()) );
             }
-
-            iterator.remove();
         }
 
         return writableMap;

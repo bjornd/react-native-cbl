@@ -1,6 +1,6 @@
 {
   "name": "react-native-cbl",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Couchbase Lite module for React Native",
   "main": "index.js",
   "scripts": {
@@ -15,6 +15,7 @@
     "react-native": "^0.41.2"
   },
   "dependencies": {
+    "fast-deep-equal": "^2.0.1",
     "hoist-non-react-statics": "^2.5.0"
   }
 }

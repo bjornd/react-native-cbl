@@ -116,7 +116,7 @@ const Features = props => (
         imageAlign: 'top',
         title: 'Lightweight',
       },{
-        content: 'Any changes in database are immidiatly reflected in the UI',
+        content: 'Any changes in database are immediatly reflected in the UI',
         image: imgUrl('live-updates.svg'),
         imageAlign: 'top',
         title: 'Live Updates',
