@@ -18,9 +18,13 @@ export class CBLConnection {
         } else {
           return Promise.resolve()
         }
-      }).then( () =>
-        CouchbaseLite.startReplication( this.config.syncGatewayUrl, null )
-      )
+      }).then( () => {
+        if (this.config.syncGatewayUrl) {
+          return CouchbaseLite.startReplication( this.config.syncGatewayUrl, null )
+        } else {
+          return Promise.resolve()
+        }
+      })
     }
     return this.promise
   }
