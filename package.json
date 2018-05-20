@@ -7,8 +7,11 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [
-    "react-native"
+    "react-native",
+    "couchbase-lite",
+    "offline-first"
   ],
+  "repository": "bjornd/react-native-cbl",
   "author": "",
   "license": "MIT",
   "peerDependencies": {
@@ -17,5 +20,8 @@
   "dependencies": {
     "fast-deep-equal": "^2.0.1",
     "hoist-non-react-statics": "^2.5.0"
+  },
+  "devDependencies": {
+    "appium": "^1.8.0"
   }
 }
