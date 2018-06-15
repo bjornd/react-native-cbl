@@ -13,10 +13,10 @@ apply plugin: 'com.android.library'
 
 android {
     compileSdkVersion 23
-    buildToolsVersion "23.0.1"
+    buildToolsVersion '27.0.3'
 
     defaultConfig {
-        minSdkVersion 16
+        minSdkVersion 19
         targetSdkVersion 22
         versionCode 1
         versionName "1.0"
@@ -34,8 +34,6 @@ repositories {
 }
 
 dependencies {
-    compile 'com.couchbase.lite:couchbase-lite-android:1.4.1'
-    compile 'com.couchbase.lite:couchbase-lite-java-listener:1.4.1'
-    compile 'com.couchbase.lite:couchbase-lite-java-javascript:1.4.1'
+    implementation 'com.couchbase.lite:couchbase-lite-android:2.0.0'
     compile 'com.facebook.react:react-native:+'
 }

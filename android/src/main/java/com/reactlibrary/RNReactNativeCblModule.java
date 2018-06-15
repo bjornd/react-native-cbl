@@ -6,23 +6,28 @@ import android.net.Uri;
 import android.text.TextUtils;
 import android.widget.ImageView;
 
-import com.couchbase.lite.Attachment;
+import com.couchbase.lite.Blob;
+import com.couchbase.lite.DataSource;
 import com.couchbase.lite.Database;
+import com.couchbase.lite.DatabaseConfiguration;
 import com.couchbase.lite.Document;
 import com.couchbase.lite.DocumentChange;
-import com.couchbase.lite.LiveQuery;
-import com.couchbase.lite.Mapper;
+import com.couchbase.lite.DocumentChangeListener;
+import com.couchbase.lite.Endpoint;
+import com.couchbase.lite.Meta;
+import com.couchbase.lite.MetaExpression;
+import com.couchbase.lite.MutableDocument;
 import com.couchbase.lite.Query;
-import com.couchbase.lite.QueryEnumerator;
-import com.couchbase.lite.QueryRow;
-import com.couchbase.lite.Reducer;
-import com.couchbase.lite.Revision;
-import com.couchbase.lite.UnsavedRevision;
-import com.couchbase.lite.View;
-import com.couchbase.lite.android.AndroidContext;
-import com.couchbase.lite.auth.Authenticator;
-import com.couchbase.lite.auth.AuthenticatorFactory;
-import com.couchbase.lite.replicator.Replication;
+import com.couchbase.lite.QueryBuilder;
+import com.couchbase.lite.QueryChange;
+import com.couchbase.lite.QueryChangeListener;
+import com.couchbase.lite.Replicator;
+import com.couchbase.lite.ReplicatorConfiguration;
+import com.couchbase.lite.Result;
+import com.couchbase.lite.ResultSet;
+import com.couchbase.lite.Select;
+import com.couchbase.lite.SelectResult;
+import com.couchbase.lite.URLEndpoint;
 import com.facebook.react.bridge.Arguments;
 import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactContext;
@@ -31,10 +36,7 @@ import com.facebook.react.bridge.ReactMethod;
 import com.facebook.react.bridge.Promise;
 import com.facebook.react.bridge.ReadableMap;
 
-import com.couchbase.lite.Manager;
 import com.couchbase.lite.CouchbaseLiteException;
-import com.couchbase.lite.util.ZipUtils;
-import com.couchbase.lite.javascript.JavaScriptViewCompiler;
 import com.facebook.react.bridge.ReadableType;
 import com.facebook.react.bridge.WritableMap;
 import com.facebook.react.modules.core.DeviceEventManagerModule;
@@ -42,9 +44,12 @@ import com.facebook.react.uimanager.NativeViewHierarchyManager;
 import com.facebook.react.uimanager.UIBlock;
 import com.facebook.react.uimanager.UIManagerModule;
 
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -56,12 +61,12 @@ import java.util.UUID;
 
 import javax.annotation.Nullable;
 
-public class RNReactNativeCblModule extends ReactContextBaseJavaModule implements Database.ChangeListener {
+public class RNReactNativeCblModule extends ReactContextBaseJavaModule {
 
   private final ReactContext mReactContext;
   private Database db = null;
   private final HashMap<String, Document> liveDocuments = new HashMap<>();
-  private final HashMap<String, LiveQuery> liveQueries = new HashMap<>();
+  private final HashMap<String, Query> liveQueries = new HashMap<>();
 
   @Override
   public String getName() {
@@ -83,18 +88,17 @@ public class RNReactNativeCblModule extends ReactContextBaseJavaModule implement
   public void openDb(String name, Boolean installPrebuildDb, Promise promise) {
     if (this.db == null) {
       try {
-        View.setCompiler(new JavaScriptViewCompiler());
-        Manager manager = new Manager(new AndroidContext(mReactContext.getApplicationContext()), Manager.DEFAULT_OPTIONS);
-        if (installPrebuildDb) {
+        DatabaseConfiguration config = new DatabaseConfiguration(mReactContext.getApplicationContext());
+        this.db = new Database(name, config);
+        /*if (installPrebuildDb) {
           Database db = manager.getExistingDatabase(name);
           if (db == null) {
             ZipUtils.unzip(this.mReactContext.getAssets().open(name + ".zip"), manager.getContext().getFilesDir());
           }
-        }
-        this.db = manager.getDatabase(name);
-        this.db.addChangeListener(this);
+        }*/
+        //this.db.addChangeListener(this);
         promise.resolve(null);
-      } catch (IOException | CouchbaseLiteException e) {
+      } catch (CouchbaseLiteException e) {
         promise.reject("open_database", "Can not open database", e);
       }
     } else {
@@ -104,9 +108,9 @@ public class RNReactNativeCblModule extends ReactContextBaseJavaModule implement
 
   @ReactMethod
   public void getDocument(String docId, Promise promise) {
-    Document doc = this.db.getExistingDocument(docId);
+    Document doc = this.db.getDocument(docId);
     if (doc == null) {
-      promise.reject("update_document", "Can not find document");
+      promise.reject("get_document", "Can not find document");
     } else {
       promise.resolve( ConversionUtil.toWritableMap( this.serializeDocument(doc) ) );
     }
@@ -114,11 +118,10 @@ public class RNReactNativeCblModule extends ReactContextBaseJavaModule implement
 
   @ReactMethod
   public void createDocument(ReadableMap properties, Promise promise) {
-    Document doc = this.db.createDocument();
-    Map<String, Object> props = new HashMap<>();
-    props.putAll(properties.toHashMap());
+    MutableDocument doc = new MutableDocument();
+    doc.setData( properties.toHashMap() );
     try {
-      doc.putProperties(props);
+      this.db.save(doc);
       promise.resolve(doc.getId());
     } catch (CouchbaseLiteException e) {
       promise.reject("create_document", "Can not create document", e);
@@ -129,16 +132,15 @@ public class RNReactNativeCblModule extends ReactContextBaseJavaModule implement
   public void updateDocument(String docId, ReadableMap properties, Promise promise) {
     Document doc = this.db.getDocument(docId);
     if (doc == null) {
-     promise.reject("update_document", "Can not find document");
-     return;
+      promise.reject("update_document", "Can not find document");
+      return;
     }
-    Map<String, Object> props = new HashMap<>();
-    if (doc.getCurrentRevision() != null) {
-      props.putAll(doc.getProperties());
+    MutableDocument mutableDoc = doc.toMutable();
+    for (Map.Entry<String, Object> entry : properties.toHashMap().entrySet()) {
+      mutableDoc.setValue(entry.getKey(), entry.getValue());
     }
-    props.putAll( ConversionUtil.toMap(properties) );
     try {
-      doc.putProperties(props);
+      this.db.save( mutableDoc );
       promise.resolve(null);
     } catch (CouchbaseLiteException e) {
       promise.reject("update_document", "Can not update document", e);
@@ -149,7 +151,7 @@ public class RNReactNativeCblModule extends ReactContextBaseJavaModule implement
   public void deleteDocument(String docId, Promise promise) {
     Document doc = this.db.getDocument(docId);
     try {
-      doc.delete();
+      this.db.delete(doc);
       promise.resolve(null);
     } catch (CouchbaseLiteException e) {
       promise.reject("delete_document", "Can not delete document", e);
@@ -158,21 +160,21 @@ public class RNReactNativeCblModule extends ReactContextBaseJavaModule implement
 
   @ReactMethod
   public void createLiveDocument(String docId, Promise promise) {
-    final Document doc = this.db.getDocument(docId);
+    Document doc = this.db.getDocument(docId);
     final String uuid = UUID.randomUUID().toString();
     final RNReactNativeCblModule self = this;
-    doc.addChangeListener(new Document.ChangeListener() {
-      @Override
-      public void changed(Document.ChangeEvent event) {
-        DocumentChange docChange = event.getChange();
+    this.db.addDocumentChangeListener(docId, new DocumentChangeListener() {
+      public void changed(DocumentChange change) {
         WritableMap params = Arguments.createMap();
         params.putString("uuid", uuid);
-        if (docChange.isDeletion()) {
-          params.putMap("data", ConversionUtil.toWritableMap( new HashMap<String, Object>() ));
+        Document changedDoc = change.getDatabase().getDocument( change.getDocumentID() );
+        Map<String, Object> props;
+        if (changedDoc == null) {
+          props = new HashMap<String, Object>();
         } else {
-          Map<String, Object> props = self.serializeDocument(doc);
-          params.putMap("data", ConversionUtil.toWritableMap(props));
+          props = self.serializeDocument( changedDoc );
         }
+        params.putMap("data", ConversionUtil.toWritableMap(props));
         self.sendEvent("liveDocumentChange", params);
       }
     });
@@ -190,64 +192,11 @@ public class RNReactNativeCblModule extends ReactContextBaseJavaModule implement
     promise.resolve(null);
   }
 
-  private View getView(String view) {
-    View dbview = this.db.getView(view);
-    if (dbview.getMap() == null) {
-      String[] path = view.split("/");
-      Document ddoc = this.db.getDocument("_design/" + path[0]);
-      String viewName = TextUtils.join("/", Arrays.copyOfRange(path, 1, path.length) );
-      Map<String, Object> container = (Map<String, Object>) ddoc.getProperty("views");
-      Map<String, String> viewDesc = (Map<String, String>)container.get(viewName);
-      String mapString = viewDesc.get("map");
-      String reduceString = viewDesc.get("reduce");
-      Mapper mapBlock = View.getCompiler().compileMap(mapString, "javascript");
-      Reducer reduceBlock = null;
-      if (reduceString != null) {
-        reduceBlock = View.getCompiler().compileReduce(reduceString, "javascript");
-      }
-      dbview.setMapReduce(mapBlock, reduceBlock, "1");
-    }
-    return dbview;
-  }
-
-  private void setQueryParams(Query query, ReadableMap params) {
-    if (params == null) {
-      return;
-    }
-    if (params.hasKey("groupLevel")) {
-      query.setGroupLevel( params.getInt("groupLevel") );
-    }
-    if (params.hasKey("keys")) {
-      query.setKeys( params.getArray("keys").toArrayList() );
-    }
-    if (params.hasKey("startKey")) {
-      if (params.getType("startKey") == ReadableType.Array) {
-        query.setStartKey( params.getArray("startKey").toArrayList() );
-      } else {
-        query.setStartKey( params.getString("startKey") );
-      }
-    }
-    if (params.hasKey("endKey")) {
-      if (params.getType("endKey") == ReadableType.Array) {
-        query.setEndKey( params.getArray("endKey").toArrayList() );
-      } else {
-        query.setEndKey( params.getString("endKey") );
-      }
-    }
-    if (params.hasKey("descending")) {
-      query.setDescending( params.getBoolean("descending") );
-    }
-    if (params.hasKey("limit")) {
-      query.setLimit( params.getInt("limit") );
-    }
-  }
-
   @ReactMethod
   public void query(String view, ReadableMap params, Promise promise) {
-    View dbview = this.getView(view);
-    Query query = dbview.createQuery();
+    Query query = QueryBuilder.select( SelectResult.all() );
     try {
-      QueryEnumerator result = query.run();
+      ResultSet result = query.execute();
       promise.resolve( ConversionUtil.toWritableArray( this.getQueryResults(result).toArray() ) );
     } catch (CouchbaseLiteException e) {
       promise.reject("query", "Error running query", e);
@@ -255,25 +204,30 @@ public class RNReactNativeCblModule extends ReactContextBaseJavaModule implement
   }
 
   @ReactMethod
-  public void createLiveQuery(String view, ReadableMap params, Promise promise) {
-    View dbview = this.getView(view);
-    Query query = dbview.createQuery();
-    this.setQueryParams(query, params);
-    final LiveQuery liveQuery = query.toLiveQuery();
+  public void createLiveQuery(ReadableMap params, Promise promise) {
     final String uuid = UUID.randomUUID().toString();
     final RNReactNativeCblModule self = this;
-    liveQuery.addChangeListener(new LiveQuery.ChangeListener() {
-      @Override
-      public void changed(LiveQuery.ChangeEvent event) {
-        WritableMap params = Arguments.createMap();
-        params.putString("uuid", uuid);
-        params.putArray("data", ConversionUtil.toWritableArray( self.getQueryResults(event.getRows()).toArray() ));
-        self.sendEvent("liveQueryChange", params);
+    Query query = QueryBuilder.select( SelectResult.all(), SelectResult.expression(Meta.id) ).from(DataSource.database(this.db));
+    query.addChangeListener(new QueryChangeListener() {
+      public void changed(QueryChange change) {
+        WritableMap eventParams = Arguments.createMap();
+        eventParams.putString("uuid", uuid);
+        eventParams.putArray("data", ConversionUtil.toWritableArray( self.getQueryResults(change.getResults()).toArray() ));
+        self.sendEvent("liveQueryChange", eventParams);
       }
     });
-    this.liveQueries.put(uuid, liveQuery);
+    this.liveQueries.put(uuid, query);
     promise.resolve(uuid);
-    liveQuery.start();
+
+    try {
+      ResultSet result = query.execute();
+      WritableMap eventParams = Arguments.createMap();
+      eventParams.putString("uuid", uuid);
+      eventParams.putArray("data", ConversionUtil.toWritableArray( this.getQueryResults(result).toArray() ) );
+      self.sendEvent("liveQueryChange", eventParams);
+    } catch (CouchbaseLiteException e) {
+      promise.reject("live_query", "Error running live query for the first time", e);
+    }
   }
 
   @ReactMethod
@@ -282,57 +236,32 @@ public class RNReactNativeCblModule extends ReactContextBaseJavaModule implement
     promise.resolve(null);
   }
 
-  public void changed(Database.ChangeEvent event) {
-    for (DocumentChange change : event.getChanges()) {
-      for (String queryUuid : this.liveQueries.keySet()) {
-        QueryEnumerator rows = this.liveQueries.get(queryUuid).getRows();
-        while (rows.hasNext()) {
-          QueryRow row = rows.next();
-          if (row.getDocumentId().equals(change.getDocumentId())) {
-            WritableMap params = Arguments.createMap();
-            params.putString("uuid", queryUuid);
-            params.putArray("data", ConversionUtil.toWritableArray(this.getQueryResults(rows).toArray()));
-            this.sendEvent("liveQueryChange", params);
-            break;
-          }
-        }
-      }
-    }
-  }
-
-  private ArrayList getQueryResults(QueryEnumerator result) {
-    ArrayList<HashMap<String, Object>> list = new ArrayList<>();
-    for (Iterator<QueryRow> it = result; it.hasNext(); ) {
-      QueryRow row = it.next();
-      Document doc = row.getDocument();
-      if (doc != null) {
-        HashMap<String, Object> props = this.serializeDocument(doc);
-        if (props != null) {
-          list.add( props );
-        }
-      } else {
-        HashMap<String, Object> item = new HashMap();
-        item.put("key", row.getKey());
-        item.put("value", row.getValue());
-        list.add(item);
-      }
+  private ArrayList getQueryResults(ResultSet result) {
+    ArrayList<Map<String, Object>> list = new ArrayList<>();
+    for (Result row : result.allResults()) {
+      Map<String, Object> properties = new HashMap<String, Object>();
+      properties.put("id", row.getString("id"));
+      properties.putAll( row.getDictionary(this.db.getName()).toMap() );
+      list.add( properties );
     }
     return list;
   }
 
-  private HashMap<String, Object> serializeDocument(Document document) {
-    HashMap<String, Object> properties = new HashMap<>(document.getProperties());
-    Map<String, Object> attachments = (Map<String, Object>)properties.get("_attachments");
-    if (attachments != null) {
-      HashMap<String, Object> mappedAttachments = new HashMap<>();
-      for (Map.Entry<String, Object> entry : attachments.entrySet())
-      {
-        Map<String, Object> attData = new HashMap<>((Map<String, Object>)entry.getValue());
-        String attName = entry.getKey();
-        attData.put("url", document.getCurrentRevision().getAttachment(attName).getContentURL().toString());
-        mappedAttachments.put(attName, attData);
+  private Map<String, Object> serializeDocument(Document document) {
+    Map<String, Object> properties = new HashMap<>(document.toMap());
+    properties.put("id", document.getId());
+    for(Map.Entry<String, Object> entry: properties.entrySet()) {
+      if (entry.getValue() instanceof Blob) {
+        Blob blob = (Blob)entry.getValue();
+        Map<String, Object> blobProps = new HashMap<>(blob.getProperties());
+        String path = this.db.getPath().concat("Attachments/").concat( blob.digest().substring(5) ).concat(".blob");
+        try {
+          blobProps.put("url", new File(path).toURI().toURL().toString());
+        } catch (MalformedURLException e) {
+          blobProps.put("url", null);
+        }
+        properties.put(entry.getKey(), blobProps);
       }
-      properties.put("_attachments", mappedAttachments);
     }
     return properties;
   }
@@ -340,20 +269,14 @@ public class RNReactNativeCblModule extends ReactContextBaseJavaModule implement
   @ReactMethod
   public void startReplication(String remoteUrl, String facebookToken, Promise promise) {
     try {
-      URL url = new URL(remoteUrl);
-      Replication push = this.db.createPushReplication(url);
-      Replication pull = this.db.createPullReplication(url);
-      pull.setContinuous(true);
-      push.setContinuous(true);
-      if (facebookToken != null) {
-        Authenticator auth = AuthenticatorFactory.createFacebookAuthenticator(facebookToken);
-        push.setAuthenticator(auth);
-        pull.setAuthenticator(auth);
-      }
-      push.start();
-      pull.start();
+      Endpoint targetEndpoint = new URLEndpoint(new URI(remoteUrl));
+      ReplicatorConfiguration config = new ReplicatorConfiguration(this.db, targetEndpoint);
+      config.setReplicatorType(ReplicatorConfiguration.ReplicatorType.PUSH_AND_PULL);
+      //replConfig.setAuthenticator(new BasicAuthenticator("john", "pass"));
+      Replicator replicator = new Replicator(config);
+      replicator.start();
       promise.resolve(null);
-    } catch (MalformedURLException e) {
+    } catch (URISyntaxException e) {
       promise.reject("start_replication", "Malformed remote URL", e);
     }
   }
@@ -364,10 +287,9 @@ public class RNReactNativeCblModule extends ReactContextBaseJavaModule implement
       Uri uri = Uri.parse(contentUri);
       InputStream stream = this.mReactContext.getContentResolver().openInputStream(uri);
       String contentType = this.mReactContext.getContentResolver().getType(uri);
-      Document doc = this.db.getDocument(documentId);
-      UnsavedRevision newRev = doc.getCurrentRevision().createRevision();
-      newRev.setAttachment(attachmentName, contentType, stream);
-      newRev.save();
+      MutableDocument doc = this.db.getDocument(documentId).toMutable();
+      doc.setBlob( attachmentName, new Blob(contentType, stream));
+      this.db.save(doc);
       promise.resolve(null);
     } catch (CouchbaseLiteException e) {
       promise.reject("add_attachment", "Can not add attachment", e);
@@ -379,17 +301,16 @@ public class RNReactNativeCblModule extends ReactContextBaseJavaModule implement
   @ReactMethod
   public void removeAttachment(String attachmentName, String documentId, Promise promise) {
     try {
-      Document doc = this.db.getDocument(documentId);
-      UnsavedRevision newRev = doc.getCurrentRevision().createRevision();
-      newRev.removeAttachment(attachmentName);
-      newRev.save();
+      MutableDocument doc = this.db.getDocument(documentId).toMutable();
+      doc.remove( attachmentName );
+      this.db.save( doc );
       promise.resolve(null);
     } catch (CouchbaseLiteException e) {
       promise.reject("remove_attachment", "Can not remove attachment", e);
     }
   }
 
-  @ReactMethod
+  /*@ReactMethod
   public void connectAttachmentToImage(final int reactTag, String documentId, String attachmentName) {
     try {
       Document doc = this.db.getDocument(documentId);
@@ -410,5 +331,5 @@ public class RNReactNativeCblModule extends ReactContextBaseJavaModule implement
     } catch (CouchbaseLiteException e) {
 
     }
-  }
+  }*/
 }

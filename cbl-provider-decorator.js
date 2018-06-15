@@ -42,13 +42,14 @@ export function cblProvider(getParams) {
           Object.entries( getParams(props) ).forEach( ([key, values]) => {
             if (values.view) {
               if (values.live === false) {
-                CouchbaseLite.query(values.view, values.params).then( data => {
+                CouchbaseLite.query(values.params).then( data => {
                   this.setState( ({ results }) => {
                     return ({ results: { ...results, [key]: data } })
                   })
                 })
               } else {
-                CouchbaseLite.createLiveQuery(values.view, values.params).then( uuid => {
+                console.log(1234)
+                CouchbaseLite.createLiveQuery(values.params).then( uuid => {
                   this.liveQueries[uuid] = key
                   this.postProcess[uuid] = values.postProcess
                 })
