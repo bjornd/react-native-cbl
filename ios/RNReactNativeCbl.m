@@ -1,6 +1,5 @@
 #import "RNReactNativeCbl.h"
 #import <Couchbaselite/CouchbaseLite.h>
-#import "CBLRegisterJSViewCompiler.h"
 #import <AssetsLibrary/AssetsLibrary.h>
 #import <MobileCoreServices/MobileCoreServices.h>
 #import "RCTUIManager.h"
@@ -25,28 +24,18 @@ RCT_EXPORT_METHOD(openDb:(nonnull NSString*)name
                   rejecter:(RCTPromiseRejectBlock)reject)
 {
     if (!_db) {
-        CBLRegisterJSViewCompiler();
-        CBLManager* manager = [CBLManager sharedInstance];
-        if (!manager) {
-            reject(@"no_manager", @"Cannot create Manager instance", nil);
-            return;
-        }
-        if (installPrebuildDb) {
+        /*if (installPrebuildDb) {
             CBLDatabase* db = [manager existingDatabaseNamed:name error:nil];
             if (db == nil) {
                 NSString* dbPath = [[NSBundle mainBundle] pathForResource:name ofType:@"cblite2"];
                 [manager replaceDatabaseNamed:name withDatabaseDir:dbPath error:nil];
             }
-        }
+        }*/
         NSError *error;
-        _db = [manager databaseNamed:name error: &error];
+        _db = [[CBLDatabase alloc] initWithName:name error:&error];
         if (!_db) {
             reject(@"open_database", @"Cannot open database", error);
         } else {
-            [[NSNotificationCenter defaultCenter] addObserver: self
-                                                     selector: @selector(databaseChanged:)
-                                                         name: kCBLDatabaseChangeNotification
-                                                       object: _db];
             resolve(@"ok");
         }
     } else {
@@ -70,12 +59,13 @@ RCT_EXPORT_METHOD(createDocument:(NSDictionary *)properties
                   resolver:(RCTPromiseResolveBlock)resolve
                   rejecter:(RCTPromiseRejectBlock)reject)
 {
-    CBLDocument* doc = [_db createDocument];
+    CBLMutableDocument* doc = [[CBLMutableDocument alloc] init];
+    [doc setValuesForKeysWithDictionary:properties];
     NSError* error;
-    if (![doc putProperties: properties error: &error]) {
+    if (![_db saveDocument:doc error:&error]) {
         reject(@"document_create", @"Can not create document", error);
     } else {
-        resolve(doc.documentID);
+        resolve(doc.id);
     }
 }
 
@@ -84,18 +74,14 @@ RCT_EXPORT_METHOD(updateDocument:(NSString*)docId
                   resolver:(RCTPromiseResolveBlock)resolve
                   rejecter:(RCTPromiseRejectBlock)reject)
 {
-    CBLDocument* doc = [_db documentWithID:docId];
+    CBLMutableDocument* doc = [[_db documentWithID:docId] toMutable];
     if (!doc) {
        reject(@"document_update", @"Can not find document", nil);
        return;
     }
+    [doc setValuesForKeysWithDictionary:properties];
     NSError* error;
-    if (![doc update: ^BOOL(CBLUnsavedRevision *newRev) {
-        for (id key in properties) {
-            newRev[key] = properties[key];
-        }
-        return YES;
-    } error: &error]) {
+    if (![_db saveDocument:doc error:&error]) {
         reject(@"document_update", @"Can not update document", error);
     } else {
         resolve(@"ok");
@@ -108,7 +94,7 @@ RCT_EXPORT_METHOD(deleteDocument:(NSString*)docId
 {
     CBLDocument* doc = [_db documentWithID: docId];
     NSError* error;
-    if (![doc deleteDocument: &error]) {
+    if (![_db deleteDocument:doc error:&error]) {
         reject(@"document_delete", @"Can not delete document", error);
     } else {
         resolve([NSNull null]);
@@ -121,13 +107,11 @@ RCT_EXPORT_METHOD(createLiveDocument:(nonnull NSString*)docId
 {
     CBLDocument* doc = [_db documentWithID:docId];
     NSString *uuid = [[NSUUID UUID] UUIDString];
-    [[NSNotificationCenter defaultCenter] addObserverForName: kCBLDocumentChangeNotification
-                                                      object: doc
-                                                       queue: nil
-                                                  usingBlock: ^(NSNotification *n) {
-                                                      [self sendEventWithName:@"liveDocumentChange" body:@{ @"data": [self serializeDocument:doc], @"uuid": uuid }];
-                                                  }
-     ];
+    __weak typeof(self) weakSelf = self;
+    [_db addDocumentChangeListenerWithID:docId listener:^(CBLDocumentChange *change) {
+        NSDictionary *data = [weakSelf serializeDocument:[weakSelf.db documentWithID:docId]];
+        [weakSelf sendEventWithName:@"liveDocumentChange" body:@{ @"data": data, @"uuid": uuid }];
+    }];
     [_liveDocuments setValue:doc forKey:uuid];
     resolve(uuid);
     [self sendEventWithName:@"liveDocumentChange" body:@{ @"data": [self serializeDocument:doc], @"uuid": uuid }];
@@ -141,114 +125,77 @@ RCT_EXPORT_METHOD(destroyLiveDocument:(nonnull NSString*)uuid
     resolve(@"ok");
 }
 
-RCT_EXPORT_METHOD(query:(nonnull NSString*)view
-                  params:(NSDictionary *)params
+RCT_EXPORT_METHOD(query:(NSDictionary *)params
                   resolver:(RCTPromiseResolveBlock)resolve
                   rejecter:(RCTPromiseRejectBlock)reject)
 {
-    CBLView *dbview = [_db viewNamed:view];
-    [dbview mapBlock];
-    CBLQuery* query = [dbview createQuery];
-    [query setValuesForKeysWithDictionary:params];
     NSError *error;
-    CBLQueryEnumerator *enumerator = [query run:&error];
-    NSArray *data = [self getQueryResults:enumerator];
+    CBLQuery *query = [CBLQueryBuilder select:@[[CBLQuerySelectResult all]]
+                                         from:[CBLQueryDataSource database:_db]];
+    CBLQueryResultSet *result = [query execute:&error];
+    NSArray *data = [self getQueryResults:result];
     resolve(data);
 }
 
-RCT_EXPORT_METHOD(createLiveQuery:(nonnull NSString*)view
-                  params:(NSDictionary *)params
+RCT_EXPORT_METHOD(createLiveQuery:(NSDictionary *)params
                   resolver:(RCTPromiseResolveBlock)resolve
                   rejecter:(RCTPromiseRejectBlock)reject)
 {
-    CBLView *dbview = [_db viewNamed:view];
-    [dbview mapBlock];
-    CBLQuery* query = [dbview createQuery];
+    CBLQuery *query = [CBLQueryBuilder select:@[[CBLQuerySelectResult all], [CBLQuerySelectResult expression: CBLQueryMeta.id]]
+                                         from:[CBLQueryDataSource database:_db]];
     NSString *uuid = [[NSUUID UUID] UUIDString];
-    CBLLiveQuery *liveQuery = [query asLiveQuery];
-    [liveQuery setValuesForKeysWithDictionary:params];
-    [liveQuery addObserver:self forKeyPath:@"rows" options:0 context:NULL];
-    [liveQuery start];
+    [query addChangeListener:^(CBLQueryChange *change) {
+        NSArray *data = [self getQueryResults:[change results]];
+        [self sendEventWithName:@"liveQueryChange" body:@{ @"data": data, @"uuid": uuid }];
+    }];
+
     if (!_liveQueries) {
         _liveQueries = [[NSMutableDictionary alloc] init];
     }
-    [_liveQueries setValue:liveQuery forKey:uuid];
+    [_liveQueries setValue:query forKey:uuid];
     resolve(uuid);
+
+    NSError *error;
+    CBLQueryResultSet *result = [query execute:&error];
+    [self sendEventWithName:@"liveQueryChange" body:@{ @"data": [self getQueryResults:result], @"uuid": uuid }];
 }
 
 RCT_EXPORT_METHOD(destroyLiveQuery:(nonnull NSString*)uuid
                   resolver:(RCTPromiseResolveBlock)resolve
                   rejecter:(RCTPromiseRejectBlock)reject)
 {
-    CBLLiveQuery *liveQuery = [_liveQueries objectForKey:uuid];
-    [liveQuery stop];
-    [liveQuery removeObserver:self forKeyPath:@"rows"];
     [_liveQueries removeObjectForKey:uuid];
     resolve(@"ok");
 }
 
-- (void)observeValueForKeyPath:(NSString *)keyPath
-                      ofObject:(id)object
-                        change:(NSDictionary *)change
-                       context:(void *)context
+- (NSArray *)getQueryResults:(CBLQueryResultSet *)resultSet
 {
-    for (id key in _liveQueries) {
-        if ([_liveQueries objectForKey:key] == object) {
-            NSArray *data = [self getQueryResults:((CBLLiveQuery *)object).rows];
-            [self sendEventWithName:@"liveQueryChange" body:@{ @"data": data, @"uuid": key }];
-        }
-    }
-}
-
-- (void)databaseChanged:(NSNotification*)n {
-    for (CBLDatabaseChange* change in n.userInfo[@"changes"]) {
-        for (id key in _liveQueries) {
-            NSArray *rows = [((CBLLiveQuery *)[_liveQueries objectForKey:key]).rows allObjects];
-            NSUInteger index = [rows indexOfObjectPassingTest:^BOOL(CBLQueryRow *obj, NSUInteger idx, BOOL *stop) {
-                if ([obj.documentID isEqualToString:change.documentID]) {
-                    return YES;
-                }
-                return NO;
-            }];
-            if (index != NSNotFound) {
-                NSArray *data = [self getQueryResults:((CBLLiveQuery *)[_liveQueries objectForKey:key]).rows];
-                [self sendEventWithName:@"liveQueryChange" body:@{ @"data": data, @"uuid": key }];
-            }
-        }
-    }
-}
-
-- (NSArray *)getQueryResults:(CBLQueryEnumerator *)queryEnumerator
-{
-    NSArray *rows = [queryEnumerator allObjects];
+    NSArray *rows = [resultSet allResults];
     NSMutableArray *mappedRows = [NSMutableArray arrayWithCapacity:[rows count]];
-    [rows enumerateObjectsUsingBlock:^(CBLQueryRow *obj, NSUInteger idx, BOOL *stop) {
-        if (obj.document) {
-            if (!obj.document.isDeleted) {
-                NSDictionary *serializedDoc = [self serializeDocument:obj.document];
-                if (serializedDoc) {
-                    [mappedRows addObject:serializedDoc];
-                }
-            }
-        } else {
-            [mappedRows addObject:@{ @"key": obj.key, @"value": obj.value == nil ? [NSNull null] : obj.value }];
-        }
+    [rows enumerateObjectsUsingBlock:^(CBLQueryResult *row, NSUInteger idx, BOOL *stop) {
+        NSMutableDictionary *props = [[NSMutableDictionary alloc] initWithDictionary:[row toDictionary]];
+        NSDictionary *rowProps = [[row valueForKey:_db.name] toDictionary];
+        [props removeObjectForKey:_db.name];
+        [props setValuesForKeysWithDictionary:rowProps];
+        [mappedRows addObject:props];
     }];
     return mappedRows;
 }
 
 - (NSDictionary *)serializeDocument:(CBLDocument *)document
 {
-    NSMutableDictionary *properties = [[NSMutableDictionary alloc] initWithDictionary:document.properties];
-    NSDictionary *attachments = [properties objectForKey:@"_attachments"];
-    NSMutableDictionary *mappedAttachments = [[NSMutableDictionary alloc] initWithCapacity:attachments.count];
-    for(id key in attachments) {
-        NSMutableDictionary *attData = [[NSMutableDictionary alloc] initWithDictionary:[attachments objectForKey:key]];
-        NSString *attUrl = [document.currentRevision attachmentNamed:key].contentURL.absoluteString;
-        [attData setObject:attUrl forKey:@"url"];
-        [mappedAttachments setObject:attData forKey:key];
+    NSMutableDictionary *properties = [[NSMutableDictionary alloc] initWithDictionary:[document toDictionary]];
+    for (NSString* key in properties.allKeys) {
+        if ([properties[key] isKindOfClass:[CBLBlob class]]) {
+            CBLBlob *blob = (CBLBlob *)properties[key];
+            NSMutableDictionary *blobProps = [[NSMutableDictionary alloc] initWithDictionary:blob.properties];
+            NSString *fileName = [[[blob.digest substringFromIndex:5] stringByReplacingOccurrencesOfString:@"/" withString:@"_"] stringByAppendingString:@".blob"];
+            NSString *filePath = [[_db.path stringByAppendingString:@"Attachments/"] stringByAppendingString:fileName];
+            [blobProps setValue:[[NSURL fileURLWithPath:filePath] absoluteString] forKey:@"url"];
+            [properties setValue:blobProps forKey:key];
+        }
     }
-    [properties setObject:mappedAttachments forKey:@"_attachments"];
+    [properties setValue:document.id forKey:@"id"];
     return properties;
 }
 
@@ -257,19 +204,13 @@ RCT_EXPORT_METHOD(startReplication:(NSString*)remoteUrl
                   resolver:(RCTPromiseResolveBlock)resolve
                   rejecter:(RCTPromiseRejectBlock)reject)
 {
-    NSURL* url = [NSURL URLWithString:remoteUrl];
-    CBLReplication *push = [_db createPushReplication: url];
-    CBLReplication *pull = [_db createPullReplication: url];
-    push.continuous = pull.continuous = YES;
-    if (facebookToken != nil) {
-        id<CBLAuthenticator> auth;
-        auth = [CBLAuthenticator facebookAuthenticatorWithToken:facebookToken];
-        push.authenticator = pull.authenticator = auth;
-    }
-    [push start];
-    [pull start];
-    _push = push;
-    _pull = pull;
+    NSURL *url = [[NSURL alloc] initWithString:remoteUrl];
+    CBLURLEndpoint *targetEndpoint = [[CBLURLEndpoint alloc] initWithURL:url];
+    CBLReplicatorConfiguration *replConfig = [[CBLReplicatorConfiguration alloc] initWithDatabase:_db target:targetEndpoint];
+    replConfig.replicatorType = kCBLReplicatorTypePushAndPull;
+    //replConfig.authenticator = [[CBLBasicAuthenticator alloc] initWithUsername:@"john" password:@"pass"];
+    CBLReplicator *replicator = [[CBLReplicator alloc] initWithConfig:replConfig];
+    [replicator start];
     resolve(@"ok");
 }
 
@@ -287,17 +228,11 @@ RCT_EXPORT_METHOD(addAttachment:(NSString *)assetUri
         NSUInteger buffered = [rep getBytes:buffer fromOffset:0.0 length:rep.size error:nil];
         NSData *data = [NSData dataWithBytesNoCopy:buffer length:buffered freeWhenDone:YES];
         NSString* mimeType = (__bridge_transfer NSString*)UTTypeCopyPreferredTagWithClass((__bridge CFStringRef)[rep UTI], kUTTagClassMIMEType);
-        CBLDocument* doc = [_db documentWithID:documentId];
-        CBLUnsavedRevision* newRev = [doc.currentRevision createRevision];
-        NSString *name = attachmentName;
-        if (name == nil) {
-            name = [[NSUUID UUID] UUIDString];
-        }
-        [newRev setAttachmentNamed:name
-                   withContentType:mimeType
-                           content:data];
+        CBLMutableDocument* doc = [[_db documentWithID:documentId] toMutable];
+        CBLBlob *blob = [[CBLBlob alloc] initWithContentType:mimeType data:data];
+        [doc setBlob:blob forKey:attachmentName];
         NSError* error;
-        if ([newRev save: &error]) {
+        if ([_db saveDocument:doc error:&error]) {
             resolve(@"ok");
         } else {
             reject(@"add_attachment", @"Can not add attachment", error);
@@ -312,11 +247,10 @@ RCT_EXPORT_METHOD(removeAttachment:(NSString *)attachmentName
                   resolver:(RCTPromiseResolveBlock)resolve
                   rejecter:(RCTPromiseRejectBlock)reject)
 {
-    CBLDocument* doc = [_db documentWithID:documentId];
-    CBLUnsavedRevision* newRev = [doc.currentRevision createRevision];
-    [newRev removeAttachmentNamed:attachmentName];
+    CBLMutableDocument* doc = [[_db documentWithID:documentId] toMutable];
+    [doc removeValueForKey:attachmentName];
     NSError* error;
-    if ([newRev save: &error]) {
+    if ([_db saveDocument:doc error:&error]) {
         resolve(@"ok");
     } else {
         reject(@"remove_attachment", @"Can not remove attachment", error);
