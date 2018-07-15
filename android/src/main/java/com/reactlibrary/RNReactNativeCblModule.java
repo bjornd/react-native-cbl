@@ -10,13 +10,17 @@ import com.couchbase.lite.Blob;
 import com.couchbase.lite.DataSource;
 import com.couchbase.lite.Database;
 import com.couchbase.lite.DatabaseConfiguration;
+import com.couchbase.lite.Dictionary;
 import com.couchbase.lite.Document;
 import com.couchbase.lite.DocumentChange;
 import com.couchbase.lite.DocumentChangeListener;
 import com.couchbase.lite.Endpoint;
+import com.couchbase.lite.Expression;
 import com.couchbase.lite.Meta;
 import com.couchbase.lite.MetaExpression;
 import com.couchbase.lite.MutableDocument;
+import com.couchbase.lite.OrderBy;
+import com.couchbase.lite.Ordering;
 import com.couchbase.lite.Query;
 import com.couchbase.lite.QueryBuilder;
 import com.couchbase.lite.QueryChange;
@@ -34,6 +38,7 @@ import com.facebook.react.bridge.ReactContext;
 import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
 import com.facebook.react.bridge.Promise;
+import com.facebook.react.bridge.ReadableArray;
 import com.facebook.react.bridge.ReadableMap;
 
 import com.couchbase.lite.CouchbaseLiteException;
@@ -47,6 +52,8 @@ import com.facebook.react.uimanager.UIManagerModule;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.InputStream;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -54,12 +61,15 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
 import java.io.IOException;
 import java.util.UUID;
 
 import javax.annotation.Nullable;
+
+
 
 public class RNReactNativeCblModule extends ReactContextBaseJavaModule {
 
@@ -193,7 +203,7 @@ public class RNReactNativeCblModule extends ReactContextBaseJavaModule {
   }
 
   @ReactMethod
-  public void query(String view, ReadableMap params, Promise promise) {
+  public void query(String view, ReadableArray params, Promise promise) {
     Query query = QueryBuilder.select( SelectResult.all() );
     try {
       ResultSet result = query.execute();
@@ -204,10 +214,10 @@ public class RNReactNativeCblModule extends ReactContextBaseJavaModule {
   }
 
   @ReactMethod
-  public void createLiveQuery(ReadableMap params, Promise promise) {
+  public void createLiveQuery(ReadableArray params, Promise promise) {
     final String uuid = UUID.randomUUID().toString();
     final RNReactNativeCblModule self = this;
-    Query query = QueryBuilder.select( SelectResult.all(), SelectResult.expression(Meta.id) ).from(DataSource.database(this.db));
+    Query query = this.queryFromJson(params);
     query.addChangeListener(new QueryChangeListener() {
       public void changed(QueryChange change) {
         WritableMap eventParams = Arguments.createMap();
@@ -236,12 +246,88 @@ public class RNReactNativeCblModule extends ReactContextBaseJavaModule {
     promise.resolve(null);
   }
 
+  private Query queryFromJson(ReadableArray params) {
+    ReadableMap select = params.getMap(1);
+
+    ArrayList what = select.getArray("WHAT").toArrayList();
+    ArrayList<SelectResult> results = new ArrayList<>();
+    for (Object whatArg : what) {
+      results.add( whatArg instanceof String ? SelectResult.property((String)whatArg) : SelectResult.expression( this.toExp(whatArg) ) );
+    }
+
+    List where = select.getArray("WHERE").toArrayList();
+
+    List orderByParams = select.getArray("ORDER_BY").toArrayList();
+    ArrayList<Ordering> orderBy = new ArrayList<>();
+    for (Object orderByArg : orderByParams) {
+      if (orderByArg instanceof String) {
+        orderBy.add( Ordering.property((String)orderByArg) );
+      } else {
+        List order = (List)orderByArg;
+        if (order.get(0).equals("DESC")) {
+          if (order.get(1) instanceof String) {
+            orderBy.add( Ordering.property((String)(order.get(1))).descending() );
+          } else {
+            orderBy.add( Ordering.expression(this.toExp(order.get(1))).descending() );
+          }
+        } else {
+          orderBy.add( Ordering.expression(this.toExp(order)) );
+        }
+      }
+    }
+
+    return QueryBuilder.select( results.toArray(new SelectResult[results.size()]) )
+            .from( DataSource.database(this.db) )
+            .where( this.toExp(where) )
+            .orderBy( orderBy.toArray(new Ordering[orderBy.size()]) );
+  }
+
+  private Expression toExp(Object json){
+    if (json instanceof List) {
+      List exp = (List)json;
+      String operator = (String)exp.get(0);
+      switch (operator) {
+        case "+": return this.toExp(exp.get(1)).add( this.toExp(exp.get(2)) );
+        case "-": return this.toExp(exp.size() == 2 ? 0 : exp.get(1)).subtract( this.toExp(exp.get(2)) );
+        case "*": return this.toExp(exp.get(1)).multiply( this.toExp(exp.get(2)) );
+        case "/": return this.toExp(exp.get(1)).divide( this.toExp(exp.get(2)) );
+        case "%": return this.toExp(exp.get(1)).modulo( this.toExp(exp.get(2)) );
+        case "=": return this.toExp(exp.get(1)).equalTo( this.toExp(exp.get(2)) );
+        case "!=": return this.toExp(exp.get(1)).notEqualTo( this.toExp(exp.get(2)) );
+        case "<": return this.toExp(exp.get(1)).lessThan( this.toExp(exp.get(2)) );
+        case "<=": return this.toExp(exp.get(1)).lessThanOrEqualTo( this.toExp(exp.get(2)) );
+        case ">": return this.toExp(exp.get(1)).greaterThan( this.toExp(exp.get(2)) );
+        case ">=": return this.toExp(exp.get(1)).greaterThanOrEqualTo( this.toExp(exp.get(2)) );
+        case "BETWEEN": return this.toExp(exp.get(1)).between( this.toExp(exp.get(2)), this.toExp(exp.get(3)) );
+        case "IS": return this.toExp(exp.get(1)).is( this.toExp(exp.get(2)) );
+        case "IS NOT": return this.toExp(exp.get(1)).isNot( this.toExp(exp.get(2)) );
+        case "LIKE": return this.toExp(exp.get(1)).like( this.toExp(exp.get(2)) );
+        case "MATCH": return this.toExp(exp.get(1)).regex( this.toExp(exp.get(2)) );
+        case "IN": return this.toExp(exp.get(1)).in( this.toExp(exp.get(2)) );
+        case "IS NULL OR MISSING": return this.toExp(exp.get(1)).isNullOrMissing();
+        case "IS NOT NULL OR MISSING": return this.toExp(exp.get(1)).notNullOrMissing();
+        case "NOT": return Expression.negated( this.toExp(exp.get(1)) );
+        case "AND": return this.toExp(exp.get(1)).and( this.toExp(exp.get(2)) );
+        case "OR": return this.toExp(exp.get(1)).or( this.toExp(exp.get(2)) );
+        case "?": return Expression.parameter( (String)exp.get(1) );
+        case ".": return Expression.property( exp.size() > 1 ? TextUtils.join(",", exp.subList(1, exp.size())) : "" );
+      }
+    }
+    if (json instanceof Number || json instanceof String || json instanceof Boolean) {
+      return Expression.value( json );
+    }
+    return null;
+  }
+
   private ArrayList getQueryResults(ResultSet result) {
     ArrayList<Map<String, Object>> list = new ArrayList<>();
     for (Result row : result.allResults()) {
       Map<String, Object> properties = new HashMap<String, Object>();
-      properties.put("id", row.getString("id"));
-      properties.putAll( row.getDictionary(this.db.getName()).toMap() );
+      properties.put("id", row.getString("_id"));
+      Dictionary values = row.getDictionary(this.db.getName());
+      if (values != null) {
+        properties.putAll( values.toMap() );
+      }
       list.add( properties );
     }
     return list;

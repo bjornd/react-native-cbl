@@ -4,6 +4,7 @@ import { entriesToObject } from './utils'
 import hoistNonReactStatics from 'hoist-non-react-statics'
 import CouchbaseLite from './react-native-cbl'
 import PropTypes from 'prop-types'
+import cblQueryParser from 'couchbase-lite-query-parser'
 
 const cblEventEmitter = new NativeEventEmitter(CouchbaseLite)
 
@@ -23,7 +24,7 @@ export function cblProvider(getParams) {
 
         this.state = {
           results: entriesToObject(
-            Object.entries( getParams(props) ).map( ([key, value]) => [key, value.view ? [] : {} ] )
+            Object.entries( getParams(props) ).map( ([key, value]) => [key, value.query ? [] : {} ] )
           )
         }
 
@@ -40,16 +41,16 @@ export function cblProvider(getParams) {
       createQueries(props, connection) {
         connection.promise.then( () =>
           Object.entries( getParams(props) ).forEach( ([key, values]) => {
-            if (values.view) {
+            if (values.query) {
+              const parsedQuery = cblQueryParser.parse(values.query)
               if (values.live === false) {
-                CouchbaseLite.query(values.params).then( data => {
+                CouchbaseLite.query(parsedQuery).then( data => {
                   this.setState( ({ results }) => {
                     return ({ results: { ...results, [key]: data } })
                   })
                 })
               } else {
-                console.log(1234)
-                CouchbaseLite.createLiveQuery(values.params).then( uuid => {
+                CouchbaseLite.createLiveQuery(parsedQuery).then( uuid => {
                   this.liveQueries[uuid] = key
                   this.postProcess[uuid] = values.postProcess
                 })

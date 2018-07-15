@@ -18,6 +18,7 @@
     "react-native": "^0.41.2"
   },
   "dependencies": {
+    "couchbase-lite-query-parser": "../couchbase-lite-query-parser-js",
     "fast-deep-equal": "^2.0.1",
     "hoist-non-react-statics": "^2.5.0"
   }
