@@ -28,12 +28,10 @@ android {
 
 repositories {
     mavenCentral()
-    maven {
-        url "http://files.couchbase.com/maven2/"
-    }
+    maven { url 'https://jitpack.io' }
 }
 
 dependencies {
-    implementation 'com.couchbase.lite:couchbase-lite-android:2.0.0'
+    implementation 'com.github.bjornd:couchbase-lite-android2:3ea238d227'
     compile 'com.facebook.react:react-native:+'
 }

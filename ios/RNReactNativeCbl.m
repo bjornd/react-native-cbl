@@ -4,6 +4,7 @@
 #import <MobileCoreServices/MobileCoreServices.h>
 #import "RCTUIManager.h"
 #import "RCTImageView.h"
+#import "RNReactNativeQuery.h"
 
 @implementation RNReacNativeCbl
 
@@ -137,12 +138,14 @@ RCT_EXPORT_METHOD(query:(NSDictionary *)params
     resolve(data);
 }
 
-RCT_EXPORT_METHOD(createLiveQuery:(NSDictionary *)params
+RCT_EXPORT_METHOD(createLiveQuery:(NSArray *)params
                   resolver:(RCTPromiseResolveBlock)resolve
                   rejecter:(RCTPromiseRejectBlock)reject)
 {
-    CBLQuery *query = [CBLQueryBuilder select:@[[CBLQuerySelectResult all], [CBLQuerySelectResult expression: CBLQueryMeta.id]]
-                                         from:[CBLQueryDataSource database:_db]];
+    RNReactNativeQuery *query = [[RNReactNativeQuery alloc] initWithJson:params database:_db];
+    
+    /*CBLQuery *query = [CBLQueryBuilder select:@[[CBLQuerySelectResult all], [CBLQuerySelectResult expression: CBLQueryMeta.id]]
+                                         from:[CBLQueryDataSource database:_db]];*/
     NSString *uuid = [[NSUUID UUID] UUIDString];
     [query addChangeListener:^(CBLQueryChange *change) {
         NSArray *data = [self getQueryResults:[change results]];
@@ -154,7 +157,7 @@ RCT_EXPORT_METHOD(createLiveQuery:(NSDictionary *)params
     }
     [_liveQueries setValue:query forKey:uuid];
     resolve(uuid);
-
+    
     NSError *error;
     CBLQueryResultSet *result = [query execute:&error];
     [self sendEventWithName:@"liveQueryChange" body:@{ @"data": [self getQueryResults:result], @"uuid": uuid }];
@@ -173,11 +176,7 @@ RCT_EXPORT_METHOD(destroyLiveQuery:(nonnull NSString*)uuid
     NSArray *rows = [resultSet allResults];
     NSMutableArray *mappedRows = [NSMutableArray arrayWithCapacity:[rows count]];
     [rows enumerateObjectsUsingBlock:^(CBLQueryResult *row, NSUInteger idx, BOOL *stop) {
-        NSMutableDictionary *props = [[NSMutableDictionary alloc] initWithDictionary:[row toDictionary]];
-        NSDictionary *rowProps = [[row valueForKey:_db.name] toDictionary];
-        [props removeObjectForKey:_db.name];
-        [props setValuesForKeysWithDictionary:rowProps];
-        [mappedRows addObject:props];
+        [mappedRows addObject:[row toArray]];
     }];
     return mappedRows;
 }

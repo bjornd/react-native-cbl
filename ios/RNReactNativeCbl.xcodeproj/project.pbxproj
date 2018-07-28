@@ -10,6 +10,7 @@
 		B3E7B58A1CC2AC0600A0062D /* RNReactNativeCbl.m in Sources */ = {isa = PBXBuildFile; fileRef = B3E7B5891CC2AC0600A0062D /* RNReactNativeCbl.m */; };
 		D1728B882081F49200838B93 /* RNReactNativeCblImage.m in Sources */ = {isa = PBXBuildFile; fileRef = D1728B762081F49200838B93 /* RNReactNativeCblImage.m */; };
 		D1728B8C2081F95700838B93 /* RNReactNativeCblImageManager.m in Sources */ = {isa = PBXBuildFile; fileRef = D1728B8B2081F95700838B93 /* RNReactNativeCblImageManager.m */; };
+		D194A72B20FDBB67006BF098 /* RNReactNativeQuery.m in Sources */ = {isa = PBXBuildFile; fileRef = D194A72A20FDBB67006BF098 /* RNReactNativeQuery.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -148,6 +149,8 @@
 		D1728B872081F49200838B93 /* RNReactNativeCblImage.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = RNReactNativeCblImage.h; sourceTree = "<group>"; };
 		D1728B8A2081F95700838B93 /* RNReactNativeCblImageManager.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = RNReactNativeCblImageManager.h; sourceTree = "<group>"; };
 		D1728B8B2081F95700838B93 /* RNReactNativeCblImageManager.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = RNReactNativeCblImageManager.m; sourceTree = "<group>"; };
+		D194A72920FDBB66006BF098 /* RNReactNativeQuery.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RNReactNativeQuery.h; sourceTree = "<group>"; };
+		D194A72A20FDBB67006BF098 /* RNReactNativeQuery.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RNReactNativeQuery.m; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -172,6 +175,8 @@
 		58B511D21A9E6C8500147676 = {
 			isa = PBXGroup;
 			children = (
+				D194A72920FDBB66006BF098 /* RNReactNativeQuery.h */,
+				D194A72A20FDBB67006BF098 /* RNReactNativeQuery.m */,
 				B3E7B5881CC2AC0600A0062D /* RNReactNativeCbl.h */,
 				B3E7B5891CC2AC0600A0062D /* RNReactNativeCbl.m */,
 				D1728B872081F49200838B93 /* RNReactNativeCblImage.h */,
@@ -386,6 +391,7 @@
 				D1728B882081F49200838B93 /* RNReactNativeCblImage.m in Sources */,
 				B3E7B58A1CC2AC0600A0062D /* RNReactNativeCbl.m in Sources */,
 				D1728B8C2081F95700838B93 /* RNReactNativeCblImageManager.m in Sources */,
+				D194A72B20FDBB67006BF098 /* RNReactNativeQuery.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

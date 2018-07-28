@@ -136,7 +136,7 @@ import javax.annotation.Nullable;
                     result.add(toMap(readableArray.getMap(index)));
                     break;
                 case Array:
-                    result = toList(readableArray.getArray(index));
+                    result.add(toList(readableArray.getArray(index)));
                     break;
                 default:
                     throw new IllegalArgumentException("Could not convert object with index: " + index + ".");

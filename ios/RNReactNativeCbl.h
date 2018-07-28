@@ -13,8 +13,6 @@
 @property (nonatomic, copy) CBLDatabase* db;
 @property (nonatomic, copy) NSMutableDictionary* liveQueries;
 @property (nonatomic, copy) NSMutableDictionary* liveDocuments;
-@property (nonatomic, copy) CBLReplication* push;
-@property (nonatomic, copy) CBLReplication* pull;
 
 @end
 
