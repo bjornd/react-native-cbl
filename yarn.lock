@@ -59,9 +59,9 @@ concat-map@0.0.1:
   version "0.0.1"
   resolved "https://registry.yarnpkg.com/concat-map/-/concat-map-0.0.1.tgz#d8a96bd77fd68df7793a73036a3ba0d5405d477b"
 
-couchbase-lite-query-parser@^1.0.0:
-  version "1.0.0"
-  resolved "https://registry.yarnpkg.com/couchbase-lite-query-parser/-/couchbase-lite-query-parser-1.0.0.tgz#1965b48f802b3adf4e2184c1e51f2de902c92ef0"
+couchbase-lite-query-parser@^1.0.2:
+  version "1.0.2"
+  resolved "https://registry.yarnpkg.com/couchbase-lite-query-parser/-/couchbase-lite-query-parser-1.0.2.tgz#3491528e35553cbb23f1ec0acf12b31b70ae5610"
   dependencies:
     jison "^0.4.18"
     mocha "^5.2.0"
