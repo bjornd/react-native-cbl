@@ -15,7 +15,7 @@
 
 - (instancetype) initWithJson:(id)jsonSchema database:(CBLDatabase*)database
 {
-    self = [super init];
+    //self = [super init];
     if (self) {
         _database = database;
         _jsonSchema = jsonSchema;
