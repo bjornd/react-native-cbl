@@ -8,6 +8,12 @@ import cblQueryParser from 'couchbase-lite-query-parser'
 
 const cblEventEmitter = new NativeEventEmitter(CouchbaseLite)
 
+function shallowDiffers(a, b) {
+  for (let i in a) if (!(i in b)) return true
+  for (let i in b) if (a[i] !== b[i]) return true
+  return false
+}
+
 function optimizeQuery(q) {
   if (q instanceof Array) {
     const nq = q.map( v => optimizeQuery(v) )
@@ -54,7 +60,9 @@ export function cblProvider(getParams) {
         this.liveQueries = {}
         this.liveDocuments = {}
         this.postProcess = {}
+        this.queries = {}
         this.parsedQueries = {}
+        this.queryUuidByKey = {}
 
         this.state = {
           results: entriesToObject(
@@ -76,20 +84,31 @@ export function cblProvider(getParams) {
         connection.promise.then( () =>
           Object.entries( getParams(props) ).forEach( ([key, values]) => {
             if (values.query) {
-              const parsedQuery = optimizeQuery(cblQueryParser.parse(values.query));
-              if (values.live === false) {
-                CouchbaseLite.query(parsedQuery).then( data => {
-                  const convertedData = convertQueryResult(data, parsedQuery)
-                  this.setState( ({ results }) => {
-                    return ({ results: { ...results, [key]: convertedData } })
+              if (this.queries[key] !== values.query) {
+                const parsedQuery = optimizeQuery(cblQueryParser.parse(values.query));
+                if (values.live === false) {
+                  CouchbaseLite.query(parsedQuery).then( data => {
+                    const convertedData = convertQueryResult(data, parsedQuery)
+                    this.queries[key] = values.query
+                    this.setState( ({ results }) => {
+                      return ({ results: { ...results, [key]: convertedData } })
+                    })
                   })
-                })
-              } else {
-                CouchbaseLite.createLiveQuery(parsedQuery).then( uuid => {
-                  this.parsedQueries[uuid] = parsedQuery
-                  this.liveQueries[uuid] = key
-                  this.postProcess[uuid] = values.postProcess
-                })
+                } else {
+                  let whenReady
+                  if (this.queries[key]) {
+                    whenReady = CouchbaseLite.destroyLiveQuery(this.queryUuidByKey[key])
+                  } else {
+                    whenReady = Promise.resolve()
+                  }
+                  whenReady.then(() => CouchbaseLite.createLiveQuery(parsedQuery)).then( uuid => {
+                    this.parsedQueries[uuid] = parsedQuery
+                    this.liveQueries[uuid] = key
+                    this.queryUuidByKey[key] = uuid
+                    this.postProcess[uuid] = values.postProcess
+                    this.queries[key] = values.query
+                  })
+                }
               }
             } else if (values.docId) {
               if (values.live === false) {
@@ -128,6 +147,12 @@ export function cblProvider(getParams) {
         this.setState( ({ results }) =>
           ({ results: { ...results, [this.liveDocuments[uuid]]: data } })
         )
+      }
+
+      componentDidUpdate(prevProps) {
+        if (shallowDiffers(prevProps, this.props)) {
+          this.createQueries(this.props, this.context.cblConnection)
+        }
       }
 
       componentWillUnmount() {
